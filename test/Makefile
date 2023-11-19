@@ -47,6 +47,14 @@ ifeq ($(NO_MISC),1)
 DIRS := $(filter-out misc,$(DIRS))
 endif
 
+ifeq ($(NO_ICONV),1)
+DIRS := $(filter-out iconv,$(DIRS))
+endif
+
+ifeq ($(NO_PTHREAD),1)
+DIRS := $(filter-out pthread,$(DIRS))
+endif
+
 test check all: run
 
 run: subdirs_run

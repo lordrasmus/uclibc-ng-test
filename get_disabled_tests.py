@@ -55,13 +55,13 @@ disable_if_is_set(  "ARCH_HAS_NO_SHARED",      ["NO_DL"] );
 disable_if_is_set(  "CONFIG_SH2",      ["NO_MATH" ] )
 disable_if_is_set(  "TARGET_alpha",    ["NO_MATH" ] )
 disable_if_is_set(  "TARGET_sparc",    ["NO_MISC", "NO_NPTL" ] )
-	
+disable_if_is_set(  "TARGET_kvx",      ["NO_TLS" ] )
 
 if "TARGET_riscv64" in values:
     
     disable_if_not_set( "HAVE_SHARED",                    [ "NO_DL", "NO_ICONV", "NO_LOCALE", "NO_MISC", "NO_PTHREAD", "NO_TLS", "NO_MATH"] )
-	
-          
+
+
 disabled = list(set(disabled))          
 
 text=""

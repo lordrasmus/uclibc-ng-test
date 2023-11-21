@@ -62,6 +62,7 @@ if "TARGET_riscv64" in values:
     
     disable_if_not_set( "HAVE_SHARED",                    [ "NO_DL", "NO_ICONV", "NO_LOCALE", "NO_MISC", "NO_PTHREAD", "NO_TLS", "NO_MATH"] )
 
+disabled.append("NO_MATH")
 
 disabled = list(set(disabled))          
 

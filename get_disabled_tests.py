@@ -46,6 +46,7 @@ for l in config_lines:
 disable_if_not_set( "UCLIBC_HAS_LOCALE",              [ "NO_LOCALE" ] )
 disable_if_not_set( "UCLIBC_HAS_OBSOLETE_BSD_SIGNAL", [ "NO_NPTL"] )
 disable_if_not_set( "HAVE_SHARED",                    [ "NO_DL"] )
+disable_if_not_set( "UCLIBC_HAS_WCHAR",               [ "NO_WCHAR"] )
 
 disable_if_is_set(  "HAS_NO_THREADS",          ["NO_THREADS", "NO_NPTL", "NO_TLS" ] )
 disable_if_is_set(  "UCLIBC_HAS_LINUXTHREADS", ["NO_THREADS", "NO_NPTL", "NO_TLS" ] )

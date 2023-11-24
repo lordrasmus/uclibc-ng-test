@@ -20,10 +20,13 @@
 #-
 # Testsuite runner
 
+
 die() {
 	echo >&2 E: "$*"
 	exit 1
 }
+
+
 
 test -s uclibcng-testrunner.in || die uclibcng-testrunner.in not found
 
@@ -34,37 +37,43 @@ while read expected_ret tst_src_name binary_name subdir cmd; do
 	printf '.... %s\r' "$binary_name"
 	(cd $subdir && eval "$cmd" >$binary_name.out 2>&1) </dev/null
 	ret=$?
+	
+	current_length="${#subdir}"
+	diff=$((15 - current_length))
+	padding=$(printf '%*s' "$diff" ' ')
+	subdir_pad=${subdir}${padding}
+	
 	test $ret = "23" && {
-		echo -e "\033[01;33mSKIP\033[00m $binary_name"
+		echo -e "\r\033[01;33mSKIP\033[00m $subdir_pad $binary_name"
 		nskip=`expr $nskip + 1`
 		sed 's/^/	/' <$subdir/$binary_name.out
 		continue
 	}
 	test $ret = "$expected_ret" || {
-		echo -e "\033[01;31mFAIL\033[00m $binary_name got $ret expected $expected_ret"
+		echo -e "\r\033[01;31mFAIL\033[00m $subdir_pad $binary_name got $ret expected $expected_ret"
 		nfail=`expr $nfail + 1`
 		sed 's/^/	/' <$subdir/$binary_name.out
 		continue
 	}
 	for x in $binary_name.out $test_src_name.out -; do
 		if test x"$x" = x"-"; then
-			echo -e "\033[01;32mPASS\033[00m $binary_name"
+			echo -e "\r\033[01;32mPASS\033[00m $subdir_pad $binary_name"
 			npass=`expr $npass + 1`
 			break
 		fi
 		test -e "$subdir/$x.good" || continue
 		if d=`diff -u "$subdir/$binary_name.out" "$subdir/$x.good"`; then
-			echo -e "\033[01;32mPASS\033[00m $binary_name"
+			echo -e "\r\033[01;32mPASS\033[00m $subdir_pad $binary_name"
 			npass=`expr $npass + 1`
 		else
-			echo -e "\033[01;31mFAIL\033[00m $binary_name expected output differs"
+			echo -e "\r\033[01;31mFAIL\033[00m $subdir_pad $binary_name expected output differs"
 			nfail=`expr $nfail + 1`
 			echo "$d" | sed 's/^/       /'
 		fi
 		break
 	done
 done <uclibcng-testrunner.in
-echo Total skipped: $nskip
-echo Total failed: $nfail
-echo Total passed: $npass
+echo -e "Total skipped :\033[01;33m $nskip \033[00m"
+echo -e "Total failed  :\033[01;31m $nfail \033[00m"
+echo -e "Total passed  :\033[01;32m $npass \033[00m"
 test $nfail = 0

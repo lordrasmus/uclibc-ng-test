@@ -16,6 +16,11 @@ TESTS_DISABLED := tst-ctype tst-fmon tst-leaks tst-rpmatch tst-strfmon1
 # disable tests requiring UCLIBC_HAS_XLOCALE at the moment
 TESTS_DISABLED += bug-usesetlocale tst-xlocale1 tst-xlocale2 xfrm-test tst-C-locale
 
+# tst-wctype is entirely ja_JP-specific (it only queries the jhira, jkata,
+# jdigit, jspace and jkanji classes). uClibc-ng has no locale-specific
+# wctype classes, so every block errors out -- there is nothing else to run.
+TESTS_DISABLED += tst-wctype
+
 DODIFF_rint     := 1
 
 EXTRA_CFLAGS    := -D__USE_GNU -fno-builtin

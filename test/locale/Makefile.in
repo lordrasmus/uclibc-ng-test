@@ -40,6 +40,12 @@ TESTS_DISABLED += collate-test
 # this generator has no place in the test run.
 TESTS_DISABLED += gen-unicode-ctype
 
+# tst-sscanf only exercises fa_IR Persian digits via glibc's "%I" scanf flag
+# (read the locale's outdigits instead of 0-9). uClibc-ng does not support
+# the 'I' flag (see libc/stdio/_vfprintf.c), so every case fails with
+# "nothing found" -- there is nothing else in the test.
+TESTS_DISABLED += tst-sscanf
+
 DODIFF_rint     := 1
 
 EXTRA_CFLAGS    := -D__USE_GNU -fno-builtin

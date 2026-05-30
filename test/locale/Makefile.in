@@ -33,6 +33,13 @@ TESTS_DISABLED += tst-digits
 # its usage and exits 1. strcoll/strxfrm themselves work fine.
 TESTS_DISABLED += collate-test
 
+# gen-unicode-ctype is not a test: it is glibc's build-time generator that
+# turns a UnicodeData.txt file into an LC_CTYPE category. Run without its
+# "UnicodeData.txt version" arguments it just prints usage and exits 1.
+# uClibc-ng generates its ctype data with its own tools (gen_wctype), so
+# this generator has no place in the test run.
+TESTS_DISABLED += gen-unicode-ctype
+
 DODIFF_rint     := 1
 
 EXTRA_CFLAGS    := -D__USE_GNU -fno-builtin

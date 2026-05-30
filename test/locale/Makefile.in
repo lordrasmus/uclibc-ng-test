@@ -46,6 +46,21 @@ TESTS_DISABLED += gen-unicode-ctype
 # "nothing found" -- there is nothing else in the test.
 TESTS_DISABLED += tst-sscanf
 
+# bug-iconv-trans converts ISO-8859-1 to "ANSI_X3.4-1968//TRANSLIT" and
+# expects the umlauts to be transliterated (AE, oe, ss, ...). uClibc-ng's
+# iconv does an exact codeset-name match (no //TRANSLIT or //IGNORE suffix
+# handling), does not know the IANA alias ANSI_X3.4-1968, and has no
+# transliteration engine (see the translit TODOs in libc/misc/locale), so
+# iconv_open already fails. The whole test is about //TRANSLIT.
+TESTS_DISABLED += bug-iconv-trans
+
+# tst-trans needs a locale-defined custom character map: a "test" wctrans
+# (A->B, B->C) and custom outdigits used via the "%I" flag. uClibc-ng's
+# wctrans() only knows the POSIX set, has no localedef to compile such a
+# locale, and no "%I" support, so wctrans("test") returns 0 right away
+# ("locale data files probably not loaded").
+TESTS_DISABLED += tst-trans
+
 DODIFF_rint     := 1
 
 EXTRA_CFLAGS    := -D__USE_GNU -fno-builtin

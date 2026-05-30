@@ -27,6 +27,12 @@ TESTS_DISABLED += tst-wctype
 # never pass.
 TESTS_DISABLED += tst-digits
 
+# collate-test expects a random-seed argument plus a word list on stdin, and
+# glibc judges it by diffing the sorted output against a reference. None of
+# that (args, input list, reference .out) was ported here, so it just prints
+# its usage and exits 1. strcoll/strxfrm themselves work fine.
+TESTS_DISABLED += collate-test
+
 DODIFF_rint     := 1
 
 EXTRA_CFLAGS    := -D__USE_GNU -fno-builtin

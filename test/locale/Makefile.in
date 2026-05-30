@@ -21,6 +21,12 @@ TESTS_DISABLED += bug-usesetlocale tst-xlocale1 tst-xlocale2 xfrm-test tst-C-loc
 # wctype classes, so every block errors out -- there is nothing else to run.
 TESTS_DISABLED += tst-wctype
 
+# tst-digits needs the synthetic "test7" locale, which glibc compiles with
+# localedef. uClibc-ng has no localedef (locale data is baked in at library
+# build time), so setlocale(LC_ALL,"test7") returns NULL and the test can
+# never pass.
+TESTS_DISABLED += tst-digits
+
 DODIFF_rint     := 1
 
 EXTRA_CFLAGS    := -D__USE_GNU -fno-builtin

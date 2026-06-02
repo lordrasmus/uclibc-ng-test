@@ -10,8 +10,16 @@ endif
 TESTS := tst-tls1 tst-tls2 tst-tls3 tst-tls4 tst-tls5 tst-tls6 tst-tls7	\
 	tst-tls8 tst-tls9 tst-tls10 tst-tls11 tst-tls12 tst-tls13	\
 	tst-tls14 tst-tls15 tst-tls16 tst-tls17 tst-tls18 tst-tls-at-ctor \
-	tst-tls1-static tst-tls2-static tst-tls9-static
+	tst-tls1-static tst-tls2-static tst-tls9-static \
+	tst-tls1-pie tst-tls2-pie
 TESTS_DISABLED := tst-tls1-static tst-tls2-static tst-tls9-static
+
+# PIE builds of the basic TLS tests: the executable itself is ET_DYN, so
+# the dynamic linker has to relocate it and place its TLS block.
+CFLAGS_tst-tls1-pie := -fPIE
+CFLAGS_tst-tls2-pie := -fPIE
+LDFLAGS_tst-tls1-pie := -pie
+LDFLAGS_tst-tls2-pie := -pie
 
 # test always fails for every architecture,
 # guessing some unimplemented check or feature

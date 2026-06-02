@@ -14,6 +14,17 @@ ifneq ($(filter-out test,$(strip $(TESTS))),$(strip $(TESTS)))
 $(error Sanity check: cannot have a test named "test.c")
 endif
 
+# PIE variants need toolchain and libc support (a PIC Scrt1.o, a linker
+# that can produce ET_DYN executables); probe once per directory that
+# lists *-pie tests and drop them where the link fails (e.g. microblaze:
+# non-PIC Scrt1.o plus a BFD assertion on the attempt).
+ifneq ($(filter %-pie,$(TESTS)),)
+PIE_OK := $(shell echo 'int main(void){return 0;}' | $(CC) $(CFLAGS) $(LDFLAGS) -fPIE -pie -x c - -o /dev/null 2>/dev/null && echo y)
+ifneq ($(PIE_OK),y)
+TESTS := $(filter-out %-pie,$(TESTS))
+endif
+endif
+
 # gcc-torture-style: build every test a second time at -O2.  The suite
 # default is no -O flag, so each test runs once at -O0 and once at -O2 --
 # different optimization levels exercise different codegen in the tests

@@ -57,6 +57,9 @@ disable_if_is_set(  "CONFIG_SH2",      ["NO_MATH" ] )
 disable_if_is_set(  "TARGET_alpha",    ["NO_MATH" ] )
 disable_if_is_set(  "TARGET_sparc",    ["NO_MISC", "NO_NPTL" ] )
 disable_if_is_set(  "TARGET_kvx",      ["NO_TLS" ] )
+# no tls-macros-nds32.h in test/tls -> tst-tls* hit the
+# "No support for this architecture" #error and fail to compile
+disable_if_is_set(  "TARGET_nds32",    ["NO_TLS" ] )
 
 if "TARGET_riscv64" in values:
     

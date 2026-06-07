@@ -34,6 +34,11 @@ int main() {
     struct semid_ds ds;
     struct timespec ts_init, ts_final;
 
+    if (sizeof(time_t) < 8) {
+        printf("skip: 32-bit time_t cannot represent the post-2038 test date\n");
+        return 23;  /* testrunner: 23 == SKIP */
+    }
+
     // Save system time
     if (clock_gettime(CLOCK_REALTIME, &ts_init) == -1) {
         perror("Error getting time");

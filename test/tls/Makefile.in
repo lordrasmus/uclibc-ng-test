@@ -148,8 +148,4 @@ tst-tlsmod18a%.so: tst-tlsmod18a.c
 	$(LDFLAGS_tst-tlsmod18a.so)
 tst-tls-at-ctor: tst-tlsmod-at-ctor.so
 
-ifeq ($(TARGET_ARCH),mips)
-RET_tst-tls15 := 1
-endif
-
 WRAPPER := env LD_LIBRARY_PATH="$$PWD:.:$(LD_LIBRARY_PATH)"

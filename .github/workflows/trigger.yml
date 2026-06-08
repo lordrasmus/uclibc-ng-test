@@ -1,0 +1,24 @@
+name: trigger uclibc-ng CI
+
+# A push to this test suite changes what the per-arch CI runs, so kick off
+# the full build/test matrix over in lordrasmus/uclibc-ng via a
+# repository_dispatch event. Needs a PAT (secret DISPATCH_TOKEN) with
+# Contents: write on lordrasmus/uclibc-ng; the default GITHUB_TOKEN cannot
+# trigger workflows in another repository.
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: notify uclibc-ng (repository_dispatch test-update)
+        run: |
+          curl -fsS -X POST \
+            -H "Authorization: Bearer ${{ secrets.DISPATCH_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/repos/lordrasmus/uclibc-ng/dispatches \
+            -d '{"event_type":"test-update"}'

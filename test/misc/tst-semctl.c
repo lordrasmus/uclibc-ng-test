@@ -34,21 +34,26 @@ int main() {
     struct semid_ds ds;
     struct timespec ts_init, ts_final;
 
-    if (sizeof(time_t) < 8) {
-        printf("skip: 32-bit time_t cannot represent the post-2038 test date\n");
-        return 23;  /* testrunner: 23 == SKIP */
-    }
+    /* The post-2038 date only fits into a 64-bit time_t; the ctl mechanics
+       below are checked either way.  */
+    int time64 = sizeof(time_t) >= 8;
+    time_t ref;
 
     // Save system time
     if (clock_gettime(CLOCK_REALTIME, &ts_init) == -1) {
         perror("Error getting time");
         return 1;
     }
+    ref = ts_init.tv_sec;
 
-
-    if (clock_settime(CLOCK_REALTIME, &ts) == -1) { // Set the time to after 2038
-        perror("Error setting time");
-        return 1;
+    if (time64) {
+        if (clock_settime(CLOCK_REALTIME, &ts) == -1) { // Set the time to after 2038
+            perror("Error setting time");
+            return 1;
+        }
+        ref = ts.tv_sec;
+    } else {
+        printf("32-bit time_t: skipping the post-2038 part\n");
     }
 
     // Create a semaphore set
@@ -82,7 +87,7 @@ int main() {
     printf("=== semid_ds structure values ===\n");
     print_semid_ds(&ds);
 
-    if ((ds.sem_ctime - ts.tv_sec > 60) || (ts.tv_sec - ds.sem_ctime > 60)) {
+    if ((ds.sem_ctime - ref > 60) || (ref - ds.sem_ctime > 60)) {
         printf("\nSemctl get a error time! \n");
         exit(EXIT_FAILURE);
     }
@@ -94,9 +99,11 @@ int main() {
     }
 
     // Restore system time
-    clock_gettime(CLOCK_REALTIME, &ts_final);
-    ts_init.tv_sec = ts_init.tv_sec + ts_final.tv_sec - ts.tv_sec;
-    clock_settime(CLOCK_REALTIME, &ts_init);
+    if (time64) {
+        clock_gettime(CLOCK_REALTIME, &ts_final);
+        ts_init.tv_sec = ts_init.tv_sec + ts_final.tv_sec - ts.tv_sec;
+        clock_settime(CLOCK_REALTIME, &ts_init);
+    }
 
     return 0;
 }

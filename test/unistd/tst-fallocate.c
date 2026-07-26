@@ -54,6 +54,15 @@ do_test (void)
      While block sizes vary, we'll assume eight 4K blocks for good measure. */
   if (fallocate (fd, 0, 8 * 4096, 128) != 0)
     {
+      if (errno == EOPNOTSUPP)
+	{
+	  /* The call reached the kernel and was understood -- the filesystem
+	     just cannot do it.  ramfs implements no .fallocate, and that is
+	     the root filesystem on noMMU, where tmpfs is ramfs in disguise
+	     (SHMEM depends on MMU).  Nothing about the wrapper left to check.  */
+	  puts ("skip: filesystem does not support fallocate");
+	  return 23;  /* testrunner: 23 == SKIP */
+	}
       puts ("1st fallocate call failed");
       return 1;
     }

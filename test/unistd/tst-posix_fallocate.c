@@ -46,8 +46,20 @@ do_test (void)
       return 1;
     }
 
-  if (posix_fallocate (fd, 512, 768) != 0)
+  /* posix_fallocate() returns the error code, it does not set errno.  */
+  int ret = posix_fallocate (fd, 512, 768);
+  if (ret != 0)
     {
+      if (ret == EOPNOTSUPP)
+	{
+	  /* The call reached the kernel and was understood -- the filesystem
+	     just cannot do it.  ramfs implements no .fallocate, and that is
+	     the root filesystem on noMMU, where tmpfs is ramfs in disguise
+	     (SHMEM depends on MMU).  glibc emulates the operation in that
+	     case, uClibc and musl pass the error through.  */
+	  puts ("skip: filesystem does not support fallocate");
+	  return 23;  /* testrunner: 23 == SKIP */
+	}
       puts ("1st posix_fallocate call failed");
       return 1;
     }

@@ -93,7 +93,8 @@ static inline uint32_t crc32(uint32_t crc, const void *p, size_t sz)
 
 	while (sz --> 0) {
 		crc ^= *data++;
-		for (int i = 0; i < 8; ++i) {
+		int i;
+		for (i = 0; i < 8; ++i) {
 			if (crc & 1)
 				crc = (crc >> 1) ^ CRC32_POLY;
 			else
@@ -107,14 +108,17 @@ static void test_float(const char *conv, const double v[], int n)
 {
 	uint32_t crc = 0xffffffff;
 
-	for (int i = 0; conv[i]; ++i) {
-		for (int code = 0; code < N_CODES; ++code) {
+	int i;
+	for (i = 0; conv[i]; ++i) {
+		int code;
+		for (code = 0; code < N_CODES; ++code) {
 			char fmt[20];
 			char out[256];
 
 			make_format(fmt, code, conv[i]);
 			crc = crc32(crc, fmt, strlen(fmt));
-			for (int j = 0; j < n; ++j) {
+			int j;
+			for (j = 0; j < n; ++j) {
 				snprintf(out, sizeof(out), fmt, v[j]);
 				crc = crc32(crc, out, strlen(out));
 #ifdef DEBUG

@@ -1,12 +1,15 @@
-/* When trying to map /dev/mem with offset 0xFFFFF000 on the ARM platform, mmap
- * returns -EOVERFLOW.
+/* mmap() with an offset that does not fit a 32-bit argument.
  *
- * Since off_t is defined as a long int and the sign bit is set in the address,
- * the shift operation shifts in ones instead of zeroes
- * from the left. This results the offset sent to the kernel function becomes
- * 0xFFFFFFFF instead of 0x000FFFFF with MMAP2_PAGE_SHIFT set to 12.
+ * The point of this test is the offset, not any particular file: on 32-bit
+ * targets an offset near 4 GiB can only be expressed through the mmap2
+ * syscall, which takes it in pages, so this exercises the conversion in the
+ * C library.  It used to map the fixed physical address 0xfffff000 out of
+ * /dev/mem, which is not a property of the library at all -- whether
+ * anything mappable lives there depends on the platform, and the test was
+ * switched off for arm, riscv32 and xtensa one architecture at a time.
+ * Licensed under the LGPL v2.1, see the file COPYING.LIB in this tarball.
  */
-
+#define _FILE_OFFSET_BITS 64
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,29 +21,61 @@
 #define FATAL do { fprintf(stderr, "Error at line %d, file %s (%d) [%s]\n", \
   __LINE__, __FILE__, errno, strerror(errno)); exit(1); } while(0)
 
-#define MAP_SIZE sysconf(_SC_PAGESIZE)
-#define MAP_MASK (MAP_SIZE - 1)
+int main(void)
+{
+	char name[] = "mmap2.XXXXXX";
+	long page = sysconf(_SC_PAGESIZE);
+	off_t off = (off_t) 0xfffff000;
+	unsigned char *map;
+	long i;
+	int fd;
 
-int main(int argc, char **argv) {
-    void* map_base = 0;
-    int fd;
-    off_t target = 0xfffff000;
-    if((fd = open("/dev/mem", O_RDWR | O_SYNC)) == -1) {
-        /* skip test for non-root users */
-        if (errno == EACCES)
-            return 0;
-        FATAL;
-    }
-    printf("/dev/mem opened.\n");
-    fflush(stdout);
+	if (sizeof(off_t) < 8) {
+		printf("off_t is %d bytes, no offsets beyond 4 GiB\n",
+		       (int) sizeof(off_t));
+		return 23;	/* SKIP */
+	}
+	if (off % page) {
+		printf("offset not page aligned for a page size of %ld\n", page);
+		return 23;	/* SKIP */
+	}
 
-   /* Map one page */
-    map_base = mmap(0, MAP_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED,
-                        fd, target & ~MAP_MASK);
-    if(map_base == (void *) -1) FATAL;
-    printf("Memory mapped at address %p.\n", map_base);
-    fflush(stdout);
-    if(munmap(map_base, MAP_SIZE) == -1) FATAL;
-    close(fd);
-    return 0;
+	fd = mkstemp(name);
+	if (fd == -1)
+		FATAL;
+	unlink(name);
+
+	/* A hole, so nothing is actually allocated.  */
+	if (ftruncate(fd, off + page) == -1) {
+		if (errno == EFBIG || errno == EINVAL || errno == ENOSPC
+		    || errno == EPERM) {
+			printf("cannot size a file to %llu bytes: %s\n",
+			       (unsigned long long) off + page, strerror(errno));
+			close(fd);
+			return 23;	/* SKIP */
+		}
+		FATAL;
+	}
+
+	map = mmap(NULL, page, PROT_READ, MAP_PRIVATE, fd, off);
+	if (map == MAP_FAILED)
+		FATAL;
+	printf("mapped %ld bytes at offset %llu to %p\n",
+	       page, (unsigned long long) off, map);
+
+	/* Reading a hole gives zeroes; anything else means the offset was not
+	   passed through correctly.  */
+	for (i = 0; i < page; i++)
+		if (map[i] != 0) {
+			printf("byte %ld of the hole is %02x, expected 00\n",
+			       i, map[i]);
+			munmap(map, page);
+			close(fd);
+			return 1;
+		}
+
+	if (munmap(map, page) == -1)
+		FATAL;
+	close(fd);
+	return 0;
 }

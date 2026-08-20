@@ -49,7 +49,13 @@ disable_if_not_set( "HAVE_SHARED",                    [ "NO_DL"] )
 disable_if_not_set( "UCLIBC_HAS_WCHAR",               [ "NO_WCHAR"] )
 
 disable_if_is_set(  "HAS_NO_THREADS",          ["NO_THREADS", "NO_NPTL", "NO_TLS" ] )
-disable_if_is_set(  "UCLIBC_HAS_LINUXTHREADS", ["NO_THREADS", "NO_NPTL", "NO_TLS" ] )
+# LinuxThreads has no TLS and is not NPTL, but it does have threads: test/pthread
+# holds ex1..ex8, the original LinuxThreads examples.  Running them is what the
+# NO_THREADS entry used to prevent.  sparc goes first -- extend the exception to
+# the other linuxthreads targets once we know what they do with those tests.
+if not ("TARGET_sparc" in values and values["TARGET_sparc"] == "y"):
+    disable_if_is_set(  "UCLIBC_HAS_LINUXTHREADS", ["NO_THREADS" ] )
+disable_if_is_set(  "UCLIBC_HAS_LINUXTHREADS", ["NO_NPTL", "NO_TLS" ] )
 disable_if_is_set(  "ARCH_HAS_NO_SHARED",      ["NO_DL"] );
 
 

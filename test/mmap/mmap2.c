@@ -25,16 +25,20 @@ int main(void)
 {
 	char name[] = "mmap2.XXXXXX";
 	long page = sysconf(_SC_PAGESIZE);
-	off_t off = (off_t) 0xfffff000;
 	unsigned char *map;
+	off_t off;
 	long i;
 	int fd;
 
-	if (sizeof(off_t) < 8) {
-		printf("off_t is %d bytes, no offsets beyond 4 GiB\n",
-		       (int) sizeof(off_t));
-		return 23;	/* SKIP */
-	}
+	/* The largest offset this off_t can express, page aligned and with room
+	   for one page: beyond 32 bits where off_t is 64 bits wide, and just
+	   below 2 GiB where it is not -- the conversion to pages is what is
+	   being tested, and it happens either way.  */
+	if (sizeof(off_t) >= 8)
+		off = (off_t) 0xfffff000UL;
+	else
+		off = (off_t) 0x7fffe000L;
+
 	if (off % page) {
 		printf("offset not page aligned for a page size of %ld\n", page);
 		return 23;	/* SKIP */

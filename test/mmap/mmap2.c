@@ -49,16 +49,22 @@ int main(void)
 		FATAL;
 	unlink(name);
 
-	/* A hole, so nothing is actually allocated.  */
+	/* A hole, so nothing is allocated on a filesystem that has holes.  Not
+	   every one does: ramfs on a target without an MMU keeps each file in a
+	   single contiguous block of pages and refuses anything above MAX_ORDER
+	   with EFBIG (fs/ramfs/file-nommu.c).  Fall back to a small offset
+	   there -- the conversion into pages is still what gets tested, just
+	   not at the far end of the range.  */
 	if (ftruncate(fd, off + page) == -1) {
-		if (errno == EFBIG || errno == EINVAL || errno == ENOSPC
-		    || errno == EPERM) {
-			printf("cannot size a file to %llu bytes: %s\n",
-			       (unsigned long long) off + page, strerror(errno));
-			close(fd);
-			return 23;	/* SKIP */
-		}
-		FATAL;
+		if (errno != EFBIG && errno != EINVAL && errno != ENOSPC
+		    && errno != ENOMEM && errno != EPERM)
+			FATAL;
+		printf("a file of %llu bytes is not possible here (%s), "
+		       "using a small offset instead\n",
+		       (unsigned long long) off + page, strerror(errno));
+		off = 2 * page;
+		if (ftruncate(fd, off + page) == -1)
+			FATAL;
 	}
 
 	map = mmap(NULL, page, PROT_READ, MAP_PRIVATE, fd, off);

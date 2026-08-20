@@ -8,6 +8,8 @@ static void do_prepare (void);
 #define PREPARE(argc, argv) do_prepare ()
 static int do_test (void);
 #define TEST_FUNCTION do_test ()
+/* two seconds is not enough under emulation */
+#define TIMEOUT 10
 #include <test-skeleton.c>
 
 static char *temp_file;

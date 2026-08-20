@@ -135,6 +135,50 @@ int main() {
   }
   }
 
+  /* Receive one of them: msgrcv is the only way msg_rtime and msg_lrpid ever
+     get set, so without it those two fields cannot be checked at all.  It also
+     exercises the receive path itself, which no test in this suite did.  */
+  struct message got = {0};
+  ssize_t rlen = msgrcv(msqid, &got, sizeof(got.mtext), 1, 0);
+  if (rlen < 0) {
+      perror("msgrcv");
+      msgctl(msqid, IPC_RMID, NULL);
+      exit(EXIT_FAILURE);
+  }
+  printf("\nMessage received: %s\n", got.mtext);
+  if (got.mtype != 1 || strcmp(got.mtext, "Hello, Message Queue 0!") != 0) {
+      printf("\nreceived mtype %ld text \"%s\", expected 1 and the first message\n",
+             (long) got.mtype, got.mtext);
+      msgctl(msqid, IPC_RMID, NULL);
+      exit(EXIT_FAILURE);
+  }
+
+  memset(&buf, 0, sizeof(buf));
+  if (msgctl(msqid, IPC_STAT, &buf) == -1) {
+      perror("msgctl");
+      msgctl(msqid, IPC_RMID, NULL);
+      exit(EXIT_FAILURE);
+  }
+  print_msqid_ds(&buf);
+  if (buf.msg_qnum != 1) {
+      printf("\nmsg_qnum is %lu after receiving one of two, expected 1\n",
+             (unsigned long) buf.msg_qnum);
+      msgctl(msqid, IPC_RMID, NULL);
+      exit(EXIT_FAILURE);
+  }
+  if (buf.msg_lrpid != getpid()) {
+      printf("\nmsg_lrpid is %d, expected %d\n",
+             (int) buf.msg_lrpid, (int) getpid());
+      msgctl(msqid, IPC_RMID, NULL);
+      exit(EXIT_FAILURE);
+  }
+  if ((buf.msg_rtime - ref > 60) || (ref - buf.msg_rtime > 60)) {
+      printf("\nmsg_rtime is off: %ld against %ld\n",
+             (long) buf.msg_rtime, (long) ref);
+      msgctl(msqid, IPC_RMID, NULL);
+      exit(EXIT_FAILURE);
+  }
+
   // Change permissions
   buf.msg_perm.mode = 0600;  // New permissions
 

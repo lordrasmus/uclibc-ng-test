@@ -83,6 +83,27 @@ int main() {
     }
 
 
+    /* One semop, so that sem_otime is set at all -- it printed the epoch in
+       every run so far because nothing in this suite ever operated on a
+       semaphore.  */
+    struct sembuf op = { .sem_num = 0, .sem_op = 1, .sem_flg = 0 };
+    if (semop(semid, &op, 1) == -1) {
+        perror("semop");
+        semctl(semid, 0, IPC_RMID);
+        exit(EXIT_FAILURE);
+    }
+    if (semctl(semid, 0, IPC_STAT, arg) == -1) {
+        perror("semctl IPC_STAT after semop failed");
+        semctl(semid, 0, IPC_RMID);
+        exit(EXIT_FAILURE);
+    }
+    if ((ds.sem_otime - ref > 60) || (ref - ds.sem_otime > 60)) {
+        printf("sem_otime is %ld after semop, reference is %ld\n",
+               (long) ds.sem_otime, (long) ref);
+        semctl(semid, 0, IPC_RMID);
+        exit(EXIT_FAILURE);
+    }
+
     // Change permissions
     ds.sem_perm.mode = 0600;  // Change to new permissions
 

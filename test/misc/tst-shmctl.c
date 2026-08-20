@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
@@ -78,6 +79,41 @@ int main() {
     if (buf.shm_cpid != getpid()) {
         printf("\nshm_cpid is %d, expected %d\n",
                (int) buf.shm_cpid, (int) getpid());
+        shmctl(shmid, IPC_RMID, NULL);
+        exit(EXIT_FAILURE);
+    }
+
+    /* Attach it: shm_nattch, shm_atime and shm_dtime only ever get set by
+       shmat/shmdt, and no test in this suite attached a segment at all -- which
+       is how a shmat() returning EFAULT stayed unnoticed.  */
+    char *addr = shmat(shmid, NULL, 0);
+    if (addr == (char *) -1) {
+        perror("shmat");
+        shmctl(shmid, IPC_RMID, NULL);
+        exit(EXIT_FAILURE);
+    }
+    strcpy(addr, "shm works");
+    if (strcmp(addr, "shm works") != 0) {
+        printf("\nsegment does not hold what was written to it\n");
+        shmdt(addr);
+        shmctl(shmid, IPC_RMID, NULL);
+        exit(EXIT_FAILURE);
+    }
+    if (shmctl(shmid, IPC_STAT, &buf) == -1) {
+        perror("shmctl");
+        shmdt(addr);
+        shmctl(shmid, IPC_RMID, NULL);
+        exit(EXIT_FAILURE);
+    }
+    if (buf.shm_nattch != 1) {
+        printf("\nshm_nattch is %lu while attached, expected 1\n",
+               (unsigned long) buf.shm_nattch);
+        shmdt(addr);
+        shmctl(shmid, IPC_RMID, NULL);
+        exit(EXIT_FAILURE);
+    }
+    if (shmdt(addr) == -1) {
+        perror("shmdt");
         shmctl(shmid, IPC_RMID, NULL);
         exit(EXIT_FAILURE);
     }

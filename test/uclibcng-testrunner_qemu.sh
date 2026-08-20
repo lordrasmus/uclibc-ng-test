@@ -31,6 +31,9 @@ nfail=0
 nskip=0
 npass=0
 while read expected_ret tst_src_name binary_name subdir cmd; do
+	# Name vor dem Lauf ausgeben: haengt ein Test, steht er sonst nirgends im
+	# Log, und man muss ihn aus der sortierten Liste rekonstruieren.
+	echo "RUN $binary_name"
 	(cd $subdir && eval "$cmd" >$binary_name.out 2>&1) </dev/null
 	ret=$?
 	test $ret = "23" && {

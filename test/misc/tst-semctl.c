@@ -73,6 +73,15 @@ int main() {
     printf("=== semid_ds structure values ===\n");
     print_semid_ds(&ds);
 
+    /* semget() asked for exactly one semaphore.  Reading anything else means
+       semid_ds does not match the kernel's layout -- which is how riscv64 was
+       found, where sem_nsems read a pad word.  */
+    if (ds.sem_nsems != 1) {
+        printf("sem_nsems is %lu, expected 1\n", (unsigned long) ds.sem_nsems);
+        semctl(semid, 0, IPC_RMID);
+        exit(EXIT_FAILURE);
+    }
+
 
     // Change permissions
     ds.sem_perm.mode = 0600;  // Change to new permissions

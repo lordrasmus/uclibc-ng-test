@@ -87,6 +87,7 @@ int main() {
   struct message msg = {0};
   msg.mtype = 1;  // Set the message type to 1
   int i =0;
+  size_t sent_bytes = 0;
 
   for(i =0; i< 2; i++)
   {
@@ -99,6 +100,7 @@ int main() {
     return 1;
   }
   printf("Message sent: %s\n", msg.mtext);
+  sent_bytes += strlen(msg.mtext) + 1;
 
   // Check the queue status again
   memset(&buf, 0, sizeof(buf));  // Clear the structure
@@ -109,6 +111,28 @@ int main() {
 
   printf("\n=== Queue status after the message is sent ===\n");
   print_msqid_ds(&buf);
+
+  /* Every field the kernel fills is a check on the structure layout, and a
+     shifted layout is the failure this test keeps meeting.  Only assert what
+     is predictable: the counters, the sizes and the sender's pid.  */
+  if (buf.msg_qnum != (msgqnum_t) (i + 1)) {
+      printf("\nmsg_qnum is %lu, expected %d\n",
+             (unsigned long) buf.msg_qnum, i + 1);
+      msgctl(msqid, IPC_RMID, NULL);
+      exit(EXIT_FAILURE);
+  }
+  if (buf.msg_cbytes != sent_bytes) {
+      printf("\nmsg_cbytes is %lu, expected %zu\n",
+             (unsigned long) buf.msg_cbytes, sent_bytes);
+      msgctl(msqid, IPC_RMID, NULL);
+      exit(EXIT_FAILURE);
+  }
+  if (buf.msg_lspid != getpid()) {
+      printf("\nmsg_lspid is %d, expected %d\n",
+             (int) buf.msg_lspid, (int) getpid());
+      msgctl(msqid, IPC_RMID, NULL);
+      exit(EXIT_FAILURE);
+  }
   }
 
   // Change permissions

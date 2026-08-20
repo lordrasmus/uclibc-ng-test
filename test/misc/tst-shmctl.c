@@ -66,6 +66,22 @@ int main() {
     printf("Shared Memory Segment Info:\n");
     print_shmid_ds(&buf);
 
+    /* Same idea: shm_segsz must be what shmget() was asked for.  It read 0 on
+       hppa while every time field happened to land right, so the test passed
+       with a structure that was off by a word.  */
+    if (buf.shm_segsz != 1024) {
+        printf("\nshm_segsz is %lu, expected 1024\n",
+               (unsigned long) buf.shm_segsz);
+        shmctl(shmid, IPC_RMID, NULL);
+        exit(EXIT_FAILURE);
+    }
+    if (buf.shm_cpid != getpid()) {
+        printf("\nshm_cpid is %d, expected %d\n",
+               (int) buf.shm_cpid, (int) getpid());
+        shmctl(shmid, IPC_RMID, NULL);
+        exit(EXIT_FAILURE);
+    }
+
     // Change to new permissions
     buf.shm_perm.mode = 0600;
     

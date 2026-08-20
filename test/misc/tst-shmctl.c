@@ -85,7 +85,15 @@ int main() {
 
     /* Attach it: shm_nattch, shm_atime and shm_dtime only ever get set by
        shmat/shmdt, and no test in this suite attached a segment at all -- which
-       is how a shmat() returning EFAULT stayed unnoticed.  */
+       is how a shmat() returning EFAULT stayed unnoticed.
+
+       Only where there is an MMU.  Without one the kernel cannot hand out a
+       shared mapping at all and shmat() answers ENODEV -- mm/nommu.c,
+       validate_mmap_request().  Keying this on __ARCH_USE_MMU__ rather than on
+       "ENODEV means skip" keeps a real ENODEV on an MMU target a failure,
+       which is what it is: this suite has already met kernel images that
+       silently lacked SysV IPC or inotify.  */
+#ifdef __ARCH_USE_MMU__
     char *addr = shmat(shmid, NULL, 0);
     if (addr == (char *) -1) {
         perror("shmat");
@@ -117,6 +125,7 @@ int main() {
         shmctl(shmid, IPC_RMID, NULL);
         exit(EXIT_FAILURE);
     }
+#endif /* __ARCH_USE_MMU__ */
 
     // Change to new permissions
     buf.shm_perm.mode = 0600;

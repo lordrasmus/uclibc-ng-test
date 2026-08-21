@@ -66,10 +66,6 @@ disable_if_is_set(  "TARGET_kvx",      ["NO_TLS" ] )
 # "No support for this architecture" #error and fail to compile
 disable_if_is_set(  "TARGET_nds32",    ["NO_TLS" ] )
 
-if "TARGET_riscv64" in values:
-    
-    disable_if_not_set( "HAVE_SHARED",                    [ "NO_DL", "NO_ICONV", "NO_LOCALE", "NO_MISC", "NO_PTHREAD", "NO_TLS", "NO_MATH"] )
-
 disabled.append("NO_MATH")
 
 disabled = list(set(disabled))          

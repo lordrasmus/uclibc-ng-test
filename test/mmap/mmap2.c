@@ -30,19 +30,16 @@ int main(void)
 	long i;
 	int fd;
 
-	/* The largest offset this off_t can express, page aligned and with room
-	   for one page: beyond 32 bits where off_t is 64 bits wide, and just
-	   below 2 GiB where it is not -- the conversion to pages is what is
-	   being tested, and it happens either way.  */
+	/* The largest page aligned offset this off_t can express, with room for
+	   one more page: just below 4 GiB where off_t is 64 bits wide, just
+	   below 2 GiB where it is not.  Computed from the page size instead of
+	   written down, so that it stays aligned where a page is not 4 KiB --
+	   the conversion into pages is what is being tested, and that happens
+	   either way.  */
 	if (sizeof(off_t) >= 8)
-		off = (off_t) 0xfffff000UL;
+		off = (off_t) ((0x100000000ULL / page - 1) * page);
 	else
-		off = (off_t) 0x7fffe000L;
-
-	if (off % page) {
-		printf("offset not page aligned for a page size of %ld\n", page);
-		return 23;	/* SKIP */
-	}
+		off = (off_t) ((0x80000000UL / page - 2) * page);
 
 	fd = mkstemp(name);
 	if (fd == -1)

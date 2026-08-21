@@ -74,6 +74,12 @@ TESTS += tst-clock tst-clock_nanosleep tst-cpuclock1 tst-cpuclock2	\
 	tst-mqueue7 tst-mqueue8 tst-mqueue9 tst-timer2 tst-timer3	\
 	tst-timer4 tst-timer5
 
+# A libc without shared support cannot link the modules these tests load,
+# and -pie has no loader to relocate it.  NO_DL marks such a build.
+ifeq ($(NO_DL),1)
+TESTS_DISABLED += tst-tls3 tst-tls4 tst-tls5 tst-atfork2 tst-cancelx4-pie
+endif
+
 
 ifeq ($(TARGET_ARCH),i386)
 CFLAGS_tst-align := -malign-double -mpreferred-stack-boundary=4

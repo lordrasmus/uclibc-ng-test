@@ -30,6 +30,16 @@ LDFLAGS_tst-tls3-pie := -pie tst-tlsmod1.so tst-tlsmod4.so
 # guessing some unimplemented check or feature
 TESTS_DISABLED += tst-tls16
 
+# A libc without shared support cannot link the modules these tests load,
+# and the -pie variants have no loader to relocate them.  What is left,
+# tst-tls1 and tst-tls2, is what a static program can do with TLS at all.
+ifeq ($(NO_DL),1)
+TESTS_DISABLED += tst-tls3 tst-tls4 tst-tls5 tst-tls6 tst-tls7 tst-tls8	\
+	tst-tls9 tst-tls10 tst-tls11 tst-tls12 tst-tls13 tst-tls14	\
+	tst-tls15 tst-tls17 tst-tls18 tst-tls-at-ctor			\
+	tst-tls1-pie tst-tls2-pie tst-tls3-pie
+endif
+
 tlsmod17a-suffixes := 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19
 tlsmod18a-suffixes := 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19
 CFLAGS_tst-tlsmod1.so := -fPIC -DSHARED -shared

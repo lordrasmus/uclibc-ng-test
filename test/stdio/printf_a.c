@@ -1,7 +1,14 @@
+#include <features.h>
+
 #include "printf_fp.c"
 
 int main()
 {
+#if defined __UCLIBC__ && !defined __UCLIBC_HAS_HEXADECIMAL_FLOATS__
+	/* %a and %A need UCLIBC_HAS_HEXADECIMAL_FLOATS; without it printf
+	   falls back to another format and the CRC cannot match.  */
+	return 23;			/* SKIP */
+#else
 	const double v[] = {
 		-NAN,
 		-INFINITY,
@@ -22,4 +29,5 @@ int main()
 
 	test_float("aA", v, ARRAY_SIZE(v));
 	return 0;
+#endif
 }

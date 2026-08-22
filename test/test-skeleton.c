@@ -132,9 +132,9 @@ create_temp_file (const char *base, char **filename)
   return _fd;
 }
 
-/* Timeout handler.  We kill the child and exit with an error.  */
+/* Timeout handler.  We kill the child and exit with an error.  Returns
+   only when the alarm turns out to be stale, see below.  */
 static void
-__attribute__ ((noreturn))
 signal_handler (int sig __attribute__ ((unused)))
 {
   int killed = 0;
@@ -170,6 +170,12 @@ signal_handler (int sig __attribute__ ((unused)))
 	  sleep(1);
 #endif
     }
+  if (killed == -1 && errno == ECHILD)
+    /* Stale alarm: the child was already reaped and we are running
+       inside the parent's exit path.  Calling exit() again from here
+       would re-run the atexit handlers and the stdio cleanup.  */
+    return;
+
   if (killed != 0 && killed != pid)
     {
       perror ("Failed to kill test process");
@@ -404,6 +410,7 @@ main (int argc, char *argv[], char *envp[])
 
   /* Wait for the regular termination.  */
   termpid = TEMP_FAILURE_RETRY (waitpid (pid, &status, 0));
+  alarm (0);
   if (termpid == -1)
     {
       printf ("Waiting for test program failed: %s\n", strerror(errno));

@@ -59,6 +59,22 @@ rtmin_handler (int sig, siginfo_t *info, void *ctx)
   rtmin_sigval = info->si_value;
 }
 
+/* mq_send only queues the notification; delivering the signal and running the
+   handler happens asynchronously, and for a notification registered by another
+   process it happens in that process.  A barrier passed by the sender after
+   mq_send therefore says nothing about the handler having run yet, so wait for
+   the count instead of reading it once.  Returns 0 if it never got there.  */
+static int
+wait_rtmin_cnt (int expected)
+{
+  for (int i = 0; i < 1000 && rtmin_cnt < expected; ++i)
+    {
+      struct timespec ts = { .tv_sec = 0, .tv_nsec = 1000000 };
+      nanosleep (&ts, NULL);
+    }
+  return rtmin_cnt == expected;
+}
+
 #define mqsend(q) (mqsend) (q, __LINE__)
 static int
 (mqsend) (mqd_t q, int line)
@@ -117,7 +133,7 @@ thr (void *arg)
 
   (void) pthread_barrier_wait (b3);
 
-  if (rtmin_cnt != 2)
+  if (! wait_rtmin_cnt (2))
     {
       puts ("SIGRTMIN signal in child did not arrive");
       result = 1;
@@ -284,7 +300,7 @@ do_child (const char *name, pthread_barrier_t *b2, pthread_barrier_t *b3,
 
   (void) pthread_barrier_wait (b2);
 
-  if (rtmin_cnt != 1)
+  if (! wait_rtmin_cnt (1))
     {
       puts ("SIGRTMIN signal in child did not arrive");
       result = 1;
@@ -703,7 +719,7 @@ do_test (void)
 
   result |= mqsend (q);
 
-  if (rtmin_cnt != 1)
+  if (! wait_rtmin_cnt (1))
     {
       puts ("SIGRTMIN signal did not arrive");
       result = 1;
@@ -807,7 +823,7 @@ do_test (void)
 
   /* Child mq_open's another mqd_t for the same queue (q2).  */
 
-  if (rtmin_cnt != 2)
+  if (! wait_rtmin_cnt (2))
     {
       puts ("SIGRTMIN signal did not arrive");
       result = 1;

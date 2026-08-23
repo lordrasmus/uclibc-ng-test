@@ -2518,31 +2518,6 @@ exp2_test (void)
 #endif
 
 
-static void
-expm1_test (void)
-{
-  errno = 0;
-  FUNC(expm1) (0);
-  if (errno == ENOSYS)
-    /* Function not implemented.  */
-    return;
-
-  START (expm1);
-
-  TEST_f_f (expm1, 0, 0);
-  TEST_f_f (expm1, minus_zero, minus_zero);
-
-#ifndef TEST_INLINE
-  TEST_f_f (expm1, plus_infty, plus_infty);
-  TEST_f_f (expm1, minus_infty, -1);
-#endif
-  TEST_f_f (expm1, nan_value, nan_value);
-
-  TEST_f_f (expm1, 1, M_El - 1.0);
-  TEST_f_f (expm1, 0.75L, 1.11700001661267466854536981983709561L);
-
-  END (expm1);
-}
 
 
 static void
@@ -4907,7 +4882,7 @@ main (int argc, char **argv)
   exp10_test ();
   exp2_test ();
 #endif
-  expm1_test ();
+  /* expm1: see tst-expm1-ulp.c */
   frexp_test ();
   ldexp_test ();
   log_test ();

@@ -1,78 +1,50 @@
-/* How far exp() may stray from the correctly rounded result depends on which
-   implementation the library was built with -- UCLIBC_LIBM_SMALL, _OPTIMIZED
-   or _ACCURATE.  The budgets below are what those variants actually did when
-   this test was written; they carry margin, because which input lands on the
-   wrong side of a rounding boundary shifts with the compiler and with fma
-   contraction.  The point is not to pin a number, it is to notice a variant
-   that no longer behaves like itself.  */
+/* exp, expf and expl against the correctly rounded result.
 
-#include <stdio.h>
-#include <stdint.h>
-#include <math.h>
-#include <features.h>
+   This replaces exp_test() in libm-test.inc, which measured the same three
+   functions against glibc's ulp tables: it covers the same special cases and
+   1000 points instead of six values, and it knows which implementation the
+   library was configured with.  See ulp-check.h.  */
 
+#include "ulp-check.h"
 #include "exp-ref.h"
 
-/* Measured on x86-64 over the 1000 points: fdlibm misses 101, Arm's routines 2,
-   CORE-MATH none.  The budgets sit just above that -- see tst-hypot-ulp.c for why
-   they are kept tight rather than roomy.  */
-#if defined __UCLIBC_LIBM_ACCURATE__
-# define TIER		"accurate"
-# define MAX_WRONG	0
-#elif defined __UCLIBC_LIBM_OPTIMIZED__
-# define TIER		"optimized"
-# define MAX_WRONG	4
-#else
-# define TIER		"small"
-# define MAX_WRONG	110
-#endif
+/* Measured on x86-64 over these 1000 points: fdlibm misses the correctly
+   rounded result 101 times, Arm's routines twice, CORE-MATH never.  The budgets
+   sit just above that on purpose -- a target that scores worse is the
+   interesting case and should be looked at, not accommodated.  Which input
+   falls on the wrong side of a rounding boundary does move with the compiler and
+   with fma contraction, so some arch will trip these; when one does, find out
+   why before raising the number, and write down what came out.  */
+#define D_BUDGET	BUDGET(110, 4, 0)
 
-/* Never more than one representable step away, whichever variant it is. */
-#define MAX_STEPS	1
+/* expf computes in double and converts (libm/w_expf.c), which rounds twice.
+   Measured, and not what one would guess: every variant hits every one of the
+   500 float points, because the double error stays far below the float rounding
+   boundary.  Hence zero for all three -- this holds the wrapper to the double
+   implementation, it does not grade the implementation.  */
+#define F_BUDGET	0
 
-static long steps(double a, double b)
-{
-	union { double d; int64_t i; } ua, ub;
-	long d;
-
-	if (a == b)
-		return 0;
-	ua.d = a;
-	ub.d = b;
-	d = (long)(ua.i - ub.i);
-	return d < 0 ? -d : d;
-}
+/* The cases exp_test() checked, for each of the three entry points. */
+#define SPECIALS(fn, expect, type)					   \
+do {									   \
+	fails += expect(#fn "(0)", fn((type)0), (type)1);		   \
+	fails += expect(#fn "(-0)", fn(-(type)0), (type)1);		   \
+	fails += expect(#fn "(inf)", fn((type)INFINITY), (type)INFINITY);  \
+	fails += expect(#fn "(-inf)", fn(-(type)INFINITY), (type)0);	   \
+	fails += expect(#fn "(nan)", fn((type)NAN), (type)NAN);		   \
+} while (0)
 
 int main(void)
 {
-	const int n = (int)(sizeof exp_ref / sizeof exp_ref[0]);
-	int wrong = 0, i;
-	long worst = 0;
-	double worst_x = 0;
+	int fails = 0;
 
-	for (i = 0; i < n; i++) {
-		long s = steps(exp(exp_ref[i].x), exp_ref[i].want);
+	fails += ulp_sweep1_d("exp", exp, exp_ref, NELEM(exp_ref), D_BUDGET);
+	fails += ulp_sweep1_f("expf", expf, expf_ref, NELEM(expf_ref), F_BUDGET);
+	fails += ulp_sweep1_l("expl", expl, exp_ref, NELEM(exp_ref), D_BUDGET);
 
-		if (s != 0)
-			wrong++;
-		if (s > worst) {
-			worst = s;
-			worst_x = exp_ref[i].x;
-		}
-	}
+	SPECIALS(exp, ulp_expect_d, double);
+	SPECIALS(expf, ulp_expect_f, float);
+	SPECIALS(expl, ulp_expect_l, long double);
 
-	printf("libm variant %s: %d of %d points off, worst %ld step(s) at x=%a\n",
-	       TIER, wrong, n, worst, worst_x);
-
-	if (worst > MAX_STEPS) {
-		printf("FAIL: more than %d step(s) away from the correctly rounded value\n",
-		       MAX_STEPS);
-		return 1;
-	}
-	if (wrong > MAX_WRONG) {
-		printf("FAIL: %d points off, %s allows at most %d\n",
-		       wrong, TIER, MAX_WRONG);
-		return 1;
-	}
-	return 0;
+	return fails != 0;
 }

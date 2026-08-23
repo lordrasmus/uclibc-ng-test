@@ -2460,38 +2460,6 @@ erfc_test (void)
 }
 
 
-static void
-exp_test (void)
-{
-  errno = 0;
-  FUNC(exp) (0);
-  if (errno == ENOSYS)
-    /* Function not implemented.  */
-    return;
-
-  START (exp);
-
-  TEST_f_f (exp, 0, 1);
-  TEST_f_f (exp, minus_zero, 1);
-
-#ifndef TEST_INLINE
-  TEST_f_f (exp, plus_infty, plus_infty);
-  TEST_f_f (exp, minus_infty, 0);
-#endif
-  TEST_f_f (exp, nan_value, nan_value);
-  TEST_f_f (exp, 1, M_El);
-
-  TEST_f_f (exp, 2, M_E2l);
-  TEST_f_f (exp, 3, M_E3l);
-  TEST_f_f (exp, 0.75L, 2.11700001661267466854536981983709561L);
-  TEST_f_f (exp, 50.0L, 5184705528587072464087.45332293348538L);
-#ifdef TEST_LDOUBLE
-  /* The result can only be represented in long double.  */
-  TEST_f_f (exp, 1000.0L, 0.197007111401704699388887935224332313e435L);
-#endif
-
-  END (exp);
-}
 
 
 #if 0
@@ -2934,48 +2902,6 @@ gamma_test (void)
   END (gamma);
 }
 
-static void
-hypot_test (void)
-{
-  errno = 0;
-  FUNC(hypot) (0.7L, 12.4L);
-  if (errno == ENOSYS)
-    /* Function not implemented.  */
-    return;
-
-  START (hypot);
-
-  TEST_ff_f (hypot, plus_infty, 1, plus_infty, IGNORE_ZERO_INF_SIGN);
-  TEST_ff_f (hypot, minus_infty, 1, plus_infty, IGNORE_ZERO_INF_SIGN);
-
-#ifndef TEST_INLINE
-  TEST_ff_f (hypot, plus_infty, nan_value, plus_infty);
-  TEST_ff_f (hypot, minus_infty, nan_value, plus_infty);
-  TEST_ff_f (hypot, nan_value, plus_infty, plus_infty);
-  TEST_ff_f (hypot, nan_value, minus_infty, plus_infty);
-#endif
-
-  TEST_ff_f (hypot, nan_value, nan_value, nan_value);
-
-  /* hypot (x,y) == hypot (+-x, +-y)  */
-  TEST_ff_f (hypot, 0.7L, 12.4L, 12.419742348374220601176836866763271L);
-  TEST_ff_f (hypot, -0.7L, 12.4L, 12.419742348374220601176836866763271L);
-  TEST_ff_f (hypot, 0.7L, -12.4L, 12.419742348374220601176836866763271L);
-  TEST_ff_f (hypot, -0.7L, -12.4L, 12.419742348374220601176836866763271L);
-  TEST_ff_f (hypot, 12.4L, 0.7L, 12.419742348374220601176836866763271L);
-  TEST_ff_f (hypot, -12.4L, 0.7L, 12.419742348374220601176836866763271L);
-  TEST_ff_f (hypot, 12.4L, -0.7L, 12.419742348374220601176836866763271L);
-  TEST_ff_f (hypot, -12.4L, -0.7L, 12.419742348374220601176836866763271L);
-
-  /*  hypot (x,0) == fabs (x)  */
-  TEST_ff_f (hypot, 0.75L, 0, 0.75L);
-  TEST_ff_f (hypot, -0.75L, 0, 0.75L);
-  TEST_ff_f (hypot, -5.7e7, 0, 5.7e7L);
-
-  TEST_ff_f (hypot, 0.75L, 1.25L, 1.45773797371132511771853821938639577L);
-
-  END (hypot);
-}
 
 
 static void
@@ -4976,7 +4902,7 @@ main (int argc, char **argv)
   tanh_test ();
 
   /* Exponential and logarithmic functions:  */
-  exp_test ();
+  /* exp: see tst-exp-ulp.c */
 #if 0
   exp10_test ();
   exp2_test ();
@@ -5001,7 +4927,7 @@ main (int argc, char **argv)
   /* Power and absolute value functions:  */
   cbrt_test ();
   fabs_test ();
-  hypot_test ();
+  /* hypot: see tst-hypot-ulp.c */
   pow_test ();
   sqrt_test ();
 

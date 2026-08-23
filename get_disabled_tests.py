@@ -59,14 +59,19 @@ disable_if_is_set(  "UCLIBC_HAS_LINUXTHREADS", ["NO_NPTL", "NO_TLS" ] )
 disable_if_is_set(  "ARCH_HAS_NO_SHARED",      ["NO_DL"] );
 
 
-disable_if_is_set(  "CONFIG_SH2",      ["NO_MATH" ] )
-disable_if_is_set(  "TARGET_alpha",    ["NO_MATH" ] )
 disable_if_is_set(  "TARGET_kvx",      ["NO_TLS" ] )
 # no tls-macros-nds32.h in test/tls -> tst-tls* hit the
 # "No support for this architecture" #error and fail to compile
 disable_if_is_set(  "TARGET_nds32",    ["NO_TLS" ] )
 
-disabled.append("NO_MATH")
+# math/ ran nowhere since 79524cb ("github always set NO_MATH for now", 2023-11-21),
+# and SH2 and alpha had been exempted two days before that in c189229; neither commit
+# says why.  Measured on riscv32-npt on 2026-08-23: builds clean and 20 of 20 results
+# pass, including test-double, test-float, test-idouble, test-ifloat and test-fpucw.
+# So turn it on everywhere and let the matrix say where it does not hold -- a target
+# that needs a flag shows up here, the way alpha needed -mieee for the hexadecimal
+# float printf.  Re-exempt an arch with disable_if_is_set() and a reason, not with a
+# blanket switch.
 
 disabled = list(set(disabled))          
 

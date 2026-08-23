@@ -399,8 +399,9 @@ main (int argc, char *argv[], char *envp[])
 
   /* Set timeout.  */
 #ifndef TIMEOUT
-  /* Default timeout is two seconds.  */
-# define TIMEOUT 2
+  /* Default timeout is four seconds.  Emulated targets need the margin;
+     see the commit message.  */
+# define TIMEOUT 4
 #endif
   signal (SIGALRM, signal_handler);
   alarm (TIMEOUT * timeoutfactor);

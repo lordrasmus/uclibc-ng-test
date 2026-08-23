@@ -2792,33 +2792,6 @@ frexp_test (void)
 }
 
 
-static void
-gamma_test (void)
-{
-  errno = 0;
-  FUNC(gamma) (1);
-
-  if (errno == ENOSYS)
-    /* Function not implemented.  */
-    return;
-  feclearexcept (FE_ALL_EXCEPT);
-
-  START (gamma);
-
-  TEST_f_f (gamma, plus_infty, plus_infty);
-  TEST_f_f (gamma, 0, plus_infty, DIVIDE_BY_ZERO_EXCEPTION);
-  TEST_f_f (gamma, -3, plus_infty, DIVIDE_BY_ZERO_EXCEPTION);
-  TEST_f_f (gamma, minus_infty, plus_infty);
-  TEST_f_f (gamma, nan_value, nan_value);
-
-  TEST_f_f1 (gamma, 1, 0, 1);
-  TEST_f_f1 (gamma, 3, M_LN2l, 1);
-
-  TEST_f_f1 (gamma, 0.5, M_LOG_SQRT_PIl, 1);
-  TEST_f_f1 (gamma, -0.5, M_LOG_2_SQRT_PIl, -1);
-
-  END (gamma);
-}
 
 
 
@@ -3041,37 +3014,6 @@ ldexp_test (void)
 }
 
 
-static void
-lgamma_test (void)
-{
-  errno = 0;
-  FUNC(lgamma) (0);
-  if (errno == ENOSYS)
-    /* Function not implemented.  */
-    return;
-  feclearexcept (FE_ALL_EXCEPT);
-
-  START (lgamma);
-
-  TEST_f_f (lgamma, plus_infty, plus_infty);
-  TEST_f_f (lgamma, 0, plus_infty, DIVIDE_BY_ZERO_EXCEPTION);
-  TEST_f_f (lgamma, nan_value, nan_value);
-
-  /* lgamma (x) == +inf plus divide by zero exception for integer x <= 0.  */
-  TEST_f_f (lgamma, -3, plus_infty, DIVIDE_BY_ZERO_EXCEPTION);
-  TEST_f_f (lgamma, minus_infty, plus_infty);
-
-  TEST_f_f1 (lgamma, 1, 0, 1);
-
-  TEST_f_f1 (lgamma, 3, M_LN2l, 1);
-
-  TEST_f_f1 (lgamma, 0.5, M_LOG_SQRT_PIl, 1);
-  TEST_f_f1 (lgamma, -0.5, M_LOG_2_SQRT_PIl, -1);
-  TEST_f_f1 (lgamma, 0.7L, 0.260867246531666514385732417016759578L, 1);
-  TEST_f_f1 (lgamma, 1.2L, -0.853740900033158497197028392998854470e-1L, 1);
-
-  END (lgamma);
-}
 
 
 #if 0
@@ -4399,37 +4341,6 @@ tanh_test (void)
   END (tanh);
 }
 
-static void
-tgamma_test (void)
-{
-  errno = 0;
-  FUNC(tgamma) (1);
-  if (errno == ENOSYS)
-    /* Function not implemented.  */
-    return;
-  feclearexcept (FE_ALL_EXCEPT);
-
-  START (tgamma);
-
-  TEST_f_f (tgamma, plus_infty, plus_infty);
-  TEST_f_f (tgamma, 0, plus_infty, DIVIDE_BY_ZERO_EXCEPTION);
-  TEST_f_f (tgamma, minus_zero, minus_infty, DIVIDE_BY_ZERO_EXCEPTION);
-  /* tgamma (x) == NaN plus invalid exception for integer x <= 0.  */
-  TEST_f_f (tgamma, -2, nan_value, INVALID_EXCEPTION);
-  TEST_f_f (tgamma, minus_infty, nan_value, INVALID_EXCEPTION);
-  TEST_f_f (tgamma, nan_value, nan_value);
-
-  TEST_f_f (tgamma, 0.5, M_SQRT_PIl);
-  TEST_f_f (tgamma, -0.5, -M_2_SQRT_PIl);
-
-  TEST_f_f (tgamma, 1, 1);
-  TEST_f_f (tgamma, 4, 6);
-
-  TEST_f_f (tgamma, 0.7L, 1.29805533264755778568117117915281162L);
-  TEST_f_f (tgamma, 1.2L, 0.918168742399760610640951655185830401L);
-
-  END (tgamma);
-}
 
 
 #if 0
@@ -4852,9 +4763,8 @@ main (int argc, char **argv)
   /* Error and gamma functions:  */
   /* erf: see tst-erf-ulp.c */
   /* erfc: see tst-erf-ulp.c */
-  gamma_test ();
-  lgamma_test ();
-  tgamma_test ();
+  /* lgamma and gamma: see tst-lgamma-ulp.c */
+  /* tgamma: see tst-tgamma-ulp.c */
 
   /* Nearest integer functions:  */
   ceil_test ();

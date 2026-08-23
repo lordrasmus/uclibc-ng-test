@@ -1,6 +1,6 @@
 # Generating the reference tables
 
-`../exp-ref.h`, `../hypot-ref.h` and `../expm1-ref.h` hold correctly rounded
+`../exp-ref.h`, `../hypot-ref.h`, `../expm1-ref.h` and `../erf-ref.h` hold correctly rounded
 results for a fixed set of inputs, and the budgets in the matching
 `../tst-*-ulp.c` come from the same run. The guest cannot compute a reference of its own: uClibc-ng's
 `long double` is a wrapper around `double` on most ports, so `expl` is the very
@@ -17,10 +17,11 @@ distinct names:
 
 | symbol | where it comes from |
 |---|---|
-| `fd_exp`, `fd_hypot`, `fd_expm1` | uClibc-ng `libm/e_exp.c`, `libm/e_hypot.c`, `libm/s_expm1.c` (fdlibm, the SMALL variant) |
+| `fd_exp`, `fd_hypot`, `fd_expm1`, `fd_erf`, `fd_erfc` | uClibc-ng `libm/e_exp.c`, `libm/e_hypot.c`, `libm/s_expm1.c`, `libm/s_erf.c` (fdlibm, the SMALL variant) |
 | `exp`, `gl_hypot`, `gl_expm1` | `libm/optimized/e_exp.c` (Arm), `libm/optimized/e_hypot.c` and `libm/optimized/s_expm1.c` (glibc) |
-| `cr_exp`, `cr_hypot`, `cr_expm1` | `libm/accurate/…` (CORE-MATH) — these are the reference |
-| `cr_expf`, `cr_hypotf`, `cr_expm1f` | CORE-MATH `src/binary32/{exp/expf.c,hypot/hypotf.c,expm1/expm1f.c}` — the reference for the float tables |
+| `cr_exp`, `cr_hypot`, `cr_expm1`, `cr_erf`, `cr_erfc` | `libm/accurate/…` (CORE-MATH) — these are the reference |
+| `cr_expf`, `cr_hypotf`, `cr_expm1f`, `cr_erff`, `cr_erfcf` | CORE-MATH `src/binary32/…` — the reference for the float tables |
+| `arm_erf` | `libm/optimized/s_erf.c` (Arm), which needs `erf_data.c` beside it |
 
 Building them means compiling those sources for the host with the function renamed,
 which needs a little scaffolding, because the in-tree files expect the uClibc-ng

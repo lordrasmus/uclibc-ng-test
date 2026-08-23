@@ -2399,65 +2399,8 @@ ctanh_test (void)
 #endif
 
 
-static void
-erf_test (void)
-{
-  errno = 0;
-  FUNC(erf) (0);
-  if (errno == ENOSYS)
-    /* Function not implemented.  */
-    return;
-
-  START (erf);
-
-  TEST_f_f (erf, 0, 0);
-  TEST_f_f (erf, minus_zero, minus_zero);
-  TEST_f_f (erf, plus_infty, 1);
-  TEST_f_f (erf, minus_infty, -1);
-  TEST_f_f (erf, nan_value, nan_value);
-
-  TEST_f_f (erf, 0.125L, 0.140316204801333817393029446521623398L);
-  TEST_f_f (erf, 0.75L, 0.711155633653515131598937834591410777L);
-  TEST_f_f (erf, 1.25L, 0.922900128256458230136523481197281140L);
-  TEST_f_f (erf, 2.0L, 0.995322265018952734162069256367252929L);
-  TEST_f_f (erf, 4.125L, 0.999999994576599200434933994687765914L);
-  TEST_f_f (erf, 27.0L, 1.0L);
-
-  END (erf);
-}
 
 
-static void
-erfc_test (void)
-{
-  errno = 0;
-  FUNC(erfc) (0);
-  if (errno == ENOSYS)
-    /* Function not implemented.  */
-    return;
-
-  START (erfc);
-
-  TEST_f_f (erfc, plus_infty, 0.0);
-  TEST_f_f (erfc, minus_infty, 2.0);
-  TEST_f_f (erfc, 0.0, 1.0);
-  TEST_f_f (erfc, minus_zero, 1.0);
-  TEST_f_f (erfc, nan_value, nan_value);
-
-  TEST_f_f (erfc, 0.125L, 0.859683795198666182606970553478376602L);
-  TEST_f_f (erfc, 0.75L, 0.288844366346484868401062165408589223L);
-  TEST_f_f (erfc, 1.25L, 0.0770998717435417698634765188027188596L);
-  TEST_f_f (erfc, 2.0L, 0.00467773498104726583793074363274707139L);
-  TEST_f_f (erfc, 4.125L, 0.542340079956506600531223408575531062e-8L);
-#ifdef TEST_LDOUBLE
-  /* The result can only be represented in long double.  */
-# if LDBL_MIN_10_EXP < -319
-  TEST_f_f (erfc, 27.0L, 0.523704892378925568501606768284954709e-318L);
-# endif
-#endif
-
-  END (erfc);
-}
 
 
 
@@ -4907,8 +4850,8 @@ main (int argc, char **argv)
   sqrt_test ();
 
   /* Error and gamma functions:  */
-  erf_test ();
-  erfc_test ();
+  /* erf: see tst-erf-ulp.c */
+  /* erfc: see tst-erf-ulp.c */
   gamma_test ();
   lgamma_test ();
   tgamma_test ();

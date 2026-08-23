@@ -15,8 +15,11 @@
 
 /* erfc has no optimized variant: Arm has no scalar erfc and glibc's is
    CORE-MATH, so the small and the optimized setting are the same fdlibm code,
-   and they get the same budget.  109 measured of 1000.  */
-#define ERFC_BUDGET	BUDGET(115, 115, 0)
+   and they get the same budget.  116 measured of 1000 on riscv32 -- and that
+   number, not the 109 an x86-64 host reports, is the one to trust: fdlibm's
+   erfc calls exp twice, so what it misses depends on the exp underneath it, and
+   on a host that is glibc's rather than ours.  */
+#define ERFC_BUDGET	BUDGET(120, 120, 0)
 
 /* erff and erfcf compute in double and convert.  Measured: every variant hits
    every float point, the double error staying far below the float rounding

@@ -1,0 +1,123 @@
+# Expected deviation from the exact result, in ulp, for the whole library.
+#
+# One file for all architectures, on purpose.  uClibc-ng's math functions are
+# the same C code everywhere; what differs between targets is whether the
+# compiler contracts a multiply and an add into one instruction and how wide the
+# registers are.  Those differences are what a test suite should show, so they
+# do not belong in a table.  A target that exceeds an entry here is a finding:
+# look at it before raising the number, and write down what came out.
+#
+# What was here before were glibc's twenty-one per-architecture files, measured
+# on glibc's implementations.  They were wrong for us in both directions -- too
+# tight where our fdlibm is weaker (lgamma allowed 1 while ours reaches 8 over a
+# dense sweep) and too loose elsewhere -- and libm-test-ulps-generic, the
+# fallback for the eight architectures that had no file of their own, contained
+# no data at all, which demanded a perfect result from hppa, nios2, alpha,
+# sparc64, bfin, c6x, cris and avr32.
+#
+# Measured with UCLIBC_LIBM_SMALL, the default and the least accurate of the
+# three implementations, so that the numbers hold for every setting.  The sharp
+# per-setting check lives in tst-exp-ulp.c and its siblings, which know which
+# implementation was built and allow it much less.
+#
+# Regenerate: build the suite with this file empty, run each of test-double,
+# test-float, test-idouble and test-ifloat with -u (a static build runs under
+# qemu-user), then merge with
+#     perl ./gen-libm-test.pl -u ULPs -n -o "./"
+# which writes NewUlps.  Note the trailing slash: -o "." writes ".NewUlps".
+
+# cos
+Test "cos (M_PI_6l * 2.0) == 0.5":
+double: 1
+idouble: 1
+Test "cos (M_PI_6l * 4.0) == -0.5":
+double: 2
+float: 1
+idouble: 2
+ifloat: 1
+
+# erf
+Test "erf (0.75) == 0.711155633653515131598937834591410777":
+double: 1
+idouble: 1
+Test "erf (1.25) == 0.922900128256458230136523481197281140":
+double: 1
+idouble: 1
+
+# erfc
+Test "erfc (4.125) == 0.542340079956506600531223408575531062e-8":
+double: 1
+idouble: 1
+
+# lgamma
+Test "lgamma (0.7) == 0.260867246531666514385732417016759578":
+double: 1
+float: 1
+idouble: 1
+ifloat: 1
+Test "lgamma (1.2) == -0.853740900033158497197028392998854470e-1":
+double: 1
+float: 2
+idouble: 1
+ifloat: 2
+
+# log10
+Test "log10 (0.75) == -0.124938736608299953132449886193870744":
+double: 1
+idouble: 1
+Test "log10 (e) == log10(e)":
+float: 1
+ifloat: 1
+
+# tgamma
+Test "tgamma (-0.5) == -2 sqrt (pi)":
+double: 1
+idouble: 1
+Test "tgamma (0.7) == 1.29805533264755778568117117915281162":
+double: 1
+float: 1
+idouble: 1
+ifloat: 1
+
+# Maximal error of functions:
+Function: "cos":
+double: 2
+float: 1
+idouble: 2
+ifloat: 1
+
+Function: "erf":
+double: 1
+idouble: 1
+
+Function: "erfc":
+double: 1
+idouble: 1
+
+Function: "lgamma":
+double: 1
+float: 2
+idouble: 1
+ifloat: 2
+
+Function: "log":
+float: 1
+ifloat: 1
+
+Function: "log10":
+double: 1
+float: 1
+idouble: 1
+ifloat: 1
+
+Function: "tan":
+double: 1
+idouble: 1
+
+Function: "tgamma":
+double: 1
+float: 1
+idouble: 1
+ifloat: 1
+
+# end of automatic generation

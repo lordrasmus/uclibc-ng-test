@@ -17,6 +17,9 @@
    6, CORE-MATH none.  Kept tight for the reason given in tst-exp-ulp.c.  */
 #define D_BUDGET	BUDGET(260, 8, 0)
 
+/* No variant lands further than one representable value from the reference. */
+#define STEPS		1
+
 /* hypotf computes in double and converts (libm/w_hypotf.c).  Measured: every
    variant hits every one of the 343 float pairs, so this holds the wrapper to
    the double implementation rather than grading the implementation.  */
@@ -60,11 +63,11 @@ int main(void)
 	int fails = 0;
 
 	fails += ulp_sweep2_d("hypot", hypot, hypot_ref, NELEM(hypot_ref),
-			      D_BUDGET);
+			      D_BUDGET, STEPS);
 	fails += ulp_sweep2_f("hypotf", hypotf, hypotf_ref, NELEM(hypotf_ref),
-			      F_BUDGET);
+			      F_BUDGET, STEPS);
 	fails += ulp_sweep2_l("hypotl", hypotl, hypot_ref, NELEM(hypot_ref),
-			      D_BUDGET);
+			      D_BUDGET, STEPS);
 
 	SPECIALS(hypot, ulp_expect_d, double);
 	SPECIALS(hypotf, ulp_expect_f, float);

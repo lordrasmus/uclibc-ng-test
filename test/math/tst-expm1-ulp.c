@@ -16,6 +16,9 @@
    first two is therefore not sloppiness, it is the measurement.  */
 #define D_BUDGET	BUDGET(65, 65, 0)
 
+/* No variant lands further than one representable value from the reference. */
+#define STEPS		1
+
 /* expm1f computes in double and converts (libm/float_wrappers.c).  Measured:
    every variant hits every one of the 500 float points, the double error
    staying far below the float rounding boundary, so this holds the wrapper to
@@ -38,11 +41,11 @@ int main(void)
 	int fails = 0;
 
 	fails += ulp_sweep1_d("expm1", expm1, expm1_ref, NELEM(expm1_ref),
-			      D_BUDGET);
+			      D_BUDGET, STEPS);
 	fails += ulp_sweep1_f("expm1f", expm1f, expm1f_ref,
-			      NELEM(expm1f_ref), F_BUDGET);
+			      NELEM(expm1f_ref), F_BUDGET, STEPS);
 	fails += ulp_sweep1_l("expm1l", expm1l, expm1_ref, NELEM(expm1_ref),
-			      D_BUDGET);
+			      D_BUDGET, STEPS);
 
 	SPECIALS(expm1, ulp_expect_d, double);
 	SPECIALS(expm1f, ulp_expect_f, float);

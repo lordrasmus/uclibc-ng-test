@@ -17,6 +17,9 @@
    why before raising the number, and write down what came out.  */
 #define D_BUDGET	BUDGET(110, 4, 0)
 
+/* No variant lands further than one representable value from the reference. */
+#define STEPS		1
+
 /* expf computes in double and converts (libm/w_expf.c), which rounds twice.
    Measured, and not what one would guess: every variant hits every one of the
    500 float points, because the double error stays far below the float rounding
@@ -38,9 +41,9 @@ int main(void)
 {
 	int fails = 0;
 
-	fails += ulp_sweep1_d("exp", exp, exp_ref, NELEM(exp_ref), D_BUDGET);
-	fails += ulp_sweep1_f("expf", expf, expf_ref, NELEM(expf_ref), F_BUDGET);
-	fails += ulp_sweep1_l("expl", expl, exp_ref, NELEM(exp_ref), D_BUDGET);
+	fails += ulp_sweep1_d("exp", exp, exp_ref, NELEM(exp_ref), D_BUDGET, STEPS);
+	fails += ulp_sweep1_f("expf", expf, expf_ref, NELEM(expf_ref), F_BUDGET, STEPS);
+	fails += ulp_sweep1_l("expl", expl, exp_ref, NELEM(exp_ref), D_BUDGET, STEPS);
 
 	SPECIALS(exp, ulp_expect_d, double);
 	SPECIALS(expf, ulp_expect_f, float);

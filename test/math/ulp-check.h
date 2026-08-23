@@ -34,9 +34,12 @@
 # define BUDGET(small, optimized, accurate)	(small)
 #endif
 
-/* No variant may land more than one representable value from the correctly
-   rounded result; what separates them is how often they are off at all.  */
-#define MAX_STEPS	1
+/* How far the worst point may be is stated per function, not once for all of
+   them: exp, hypot and expm1 never miss by more than one representable value in
+   any variant, but fdlibm's erfc reaches two, and three where the compiler
+   contracts a multiply and an add.  A variant that lands further away than its
+   own measurement did is broken in a different way than one that merely misses
+   more often, which is why the two limits are separate.  */
 
 #define NELEM(a)	((int)(sizeof (a) / sizeof (a)[0]))
 
@@ -83,7 +86,8 @@ static inline long ulp_steps_l(long double got, double want)
 }
 
 static inline int ulp_verdict(const char *name, int wrong, int n, long worst,
-			      int max_wrong, double wx, double wy, int arity)
+			      int max_wrong, int max_steps, double wx,
+			      double wy, int arity)
 {
 	if (arity == 2)
 		printf("%s variant, %s: %d of %d off, worst %ld step(s) at (%a,%a)\n",
@@ -92,9 +96,9 @@ static inline int ulp_verdict(const char *name, int wrong, int n, long worst,
 		printf("%s variant, %s: %d of %d off, worst %ld step(s) at %a\n",
 		       TIER, name, wrong, n, worst, wx);
 
-	if (worst > MAX_STEPS) {
+	if (worst > max_steps) {
 		printf("FAIL: %s is %ld step(s) from the correctly rounded value, %d allowed\n",
-		       name, worst, MAX_STEPS);
+		       name, worst, max_steps);
 		return 1;
 	}
 	if (wrong > max_wrong) {
@@ -110,7 +114,7 @@ static inline int ulp_verdict(const char *name, int wrong, int n, long worst,
 #define ULP_DEFINE_SWEEP1(sfx, type, table, steps)			\
 static inline int ulp_sweep1_##sfx(const char *name, type (*fn)(type),	\
 				   const struct table *t, int n,	\
-				   int max_wrong)			\
+				   int max_wrong, int max_steps)	\
 {									\
 	int i, wrong = 0;						\
 	long worst = 0;							\
@@ -126,14 +130,15 @@ static inline int ulp_sweep1_##sfx(const char *name, type (*fn)(type),	\
 			wx = t[i].x;					\
 		}							\
 	}								\
-	return ulp_verdict(name, wrong, n, worst, max_wrong, wx, 0, 1);	\
+	return ulp_verdict(name, wrong, n, worst, max_wrong, max_steps,	\
+			   wx, 0, 1);					\
 }
 
 #define ULP_DEFINE_SWEEP2(sfx, type, table, steps)			\
 static inline int ulp_sweep2_##sfx(const char *name,			\
 				   type (*fn)(type, type),		\
 				   const struct table *t, int n,	\
-				   int max_wrong)			\
+				   int max_wrong, int max_steps)	\
 {									\
 	int i, wrong = 0;						\
 	long worst = 0;							\
@@ -150,7 +155,8 @@ static inline int ulp_sweep2_##sfx(const char *name,			\
 			wy = t[i].y;					\
 		}							\
 	}								\
-	return ulp_verdict(name, wrong, n, worst, max_wrong, wx, wy, 2);	\
+	return ulp_verdict(name, wrong, n, worst, max_wrong, max_steps,	\
+			   wx, wy, 2);					\
 }
 
 ULP_DEFINE_SWEEP1(d, double, ulp_d1, ulp_steps_d)

@@ -29,7 +29,7 @@
    result is 0x1.3p-6.  Those points are in the table on purpose, since that
    weakness is worth showing; the sensitive half of this test is the count
    above.  */
-#define STEPS		48
+#define STEPS	BUDGET(1, 1, 0)
 
 /* The cases lgamma_test() checked.  lgamma is even about its poles: it is +inf
    at zero and at every negative integer, and +inf at both infinities.  */
@@ -83,12 +83,19 @@ static int check_gamma_alias(void)
 	static const double t[] = { 0.5, 0.7, 1.2, 3.0, -0.5, -2.5 };
 	int fails = 0, i;
 
-	for (i = 0; i < NELEM(t); i++)
-		if (gamma(t[i]) != lgamma(t[i])) {
+	/* Through memory, both of them: the i386 calling convention returns a
+	   double in st(0) and does not require it rounded to double, so
+	   comparing two calls directly compares a rounded copy against an
+	   80-bit one and never finds them equal.  */
+	for (i = 0; i < NELEM(t); i++) {
+		volatile double g = gamma(t[i]), l = lgamma(t[i]);
+
+		if (g != l) {
 			printf("FAIL: gamma(%a) is %a, lgamma is %a\n",
-			       t[i], gamma(t[i]), lgamma(t[i]));
+			       t[i], g, l);
 			fails++;
 		}
+	}
 	return fails;
 }
 

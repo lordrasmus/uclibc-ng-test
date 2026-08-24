@@ -241,11 +241,16 @@ extern void *_DYNAMIC;
 extern int signgam;		/* strong, so libm stays linked */
 
 static int missing;
+static int checked;
+static int no_weak;		/* set by surface(), which main runs first */
+static const char *gone[64];	/* a real gap is one name, not a hundred */
 
 #define CHECK(fn)							\
 	do {								\
+		checked++;						\
 		if (!(void *) (fn)) {					\
-			printf("MISSING: %s\n", #fn);			\
+			if (missing < (int) (sizeof gone / sizeof gone[0])) \
+				gone[missing] = #fn;			\
 			missing++;					\
 		}							\
 	} while (0)
@@ -263,6 +268,7 @@ static void surface(void)
 	if (!&_DYNAMIC) {
 		puts("SKIP: statically linked -- a weak reference does not pull an\n"
 		     "      archive member, so the symbol check cannot run here");
+		no_weak = 1;
 		return;
 	}
 
@@ -346,6 +352,29 @@ static void surface(void)
 #else
 	puts("SKIP: the Bessel functions are not built without DO_XSI_MATH");
 #endif
+	/* Every name null means the weak references never reached a definition,
+	   not that the library is empty: in a static link the member is simply
+	   never pulled in.  _DYNAMIC catches the plain static case above, but a
+	   static PIE carries a .dynamic section of its own for self-relocation
+	   and slips past it -- riscv32 noMMU ELF is such a target, and reported
+	   all 744 names missing while the other tests in the same run called
+	   those very functions and got right answers.  So treat all-null as the
+	   same skip, and say the count out loud.  */
+	if (checked && missing == checked) {
+		printf("SKIP: all %d names read null -- linked against an archive,\n"
+		       "      where a weak reference does not pull the member in\n",
+		       checked);
+		missing = 0;
+		no_weak = 1;
+		return;
+	}
+
+	for (int k = 0; k < missing && k < (int) (sizeof gone / sizeof gone[0]); k++)
+		printf("MISSING: %s\n", gone[k]);
+	if (missing > (int) (sizeof gone / sizeof gone[0]))
+		printf("MISSING: and %d more\n",
+		       missing - (int) (sizeof gone / sizeof gone[0]));
+
 }
 
 /* The aliases.  Each is a second name for a function checked elsewhere, and the
@@ -368,7 +397,7 @@ static int aliases(void)
 	int fails = 0;
 	unsigned i;
 
-	if (!&_DYNAMIC)
+	if (no_weak)
 		return 0;	/* see surface() */
 
 	if (!p_drem) { puts("MISSING: drem"); fails++; }

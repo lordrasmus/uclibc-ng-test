@@ -47,10 +47,10 @@
    -inf at zero from either side, NaN for a negative argument, and 0 at 1.  */
 #define SPECIALS(fn, expect, type)					   \
 do {									   \
-	fails += expect(#fn "(0)", fn((type)0), -(type)INFINITY);	   \
-	fails += expect(#fn "(-0)", fn(-(type)0), -(type)INFINITY);	   \
+	fails += ULP_EXPECT_EXC(expect, #fn "(0)", fn((type)0), -(type)INFINITY, ULP_DIVBYZERO);	   \
+	fails += ULP_EXPECT_EXC(expect, #fn "(-0)", fn(-(type)0), -(type)INFINITY, ULP_DIVBYZERO);	   \
 	fails += expect(#fn "(1)", fn((type)1), (type)0);		   \
-	fails += expect(#fn "(-1)", fn(-(type)1), (type)NAN);		   \
+	fails += ULP_EXPECT_EXC(expect, #fn "(-1)", fn(-(type)1), (type)NAN, ULP_INVALID);		   \
 	fails += expect(#fn "(inf)", fn((type)INFINITY), (type)INFINITY);  \
 	fails += expect(#fn "(nan)", fn((type)NAN), (type)NAN);		   \
 } while (0)
@@ -99,6 +99,8 @@ int main(void)
 	fails += ulp_expect_d("log2(2)", log2(2.0), 1.0);
 	fails += ulp_expect_d("log2(16)", log2(16.0), 4.0);
 	fails += ulp_expect_d("log2(256)", log2(256.0), 8.0);
+
+	ulp_report_skipped();
 
 	return fails != 0;
 }

@@ -32,11 +32,13 @@ int main(void)
 	fails += ulp_expect_d("sqrt(-0)", sqrt(-0.0), -0.0);
 	fails += ulp_expect_d("sqrt(inf)", sqrt(INFINITY), INFINITY);
 	fails += ulp_expect_d("sqrt(nan)", sqrt(NAN), NAN);
-	fails += ulp_expect_d("sqrt(-1)", sqrt(-1.0), NAN);
-	fails += ulp_expect_d("sqrt(-inf)", sqrt(-INFINITY), NAN);
+	fails += ULP_EXPECT_EXC(ulp_expect_d, "sqrt(-1)", sqrt(-1.0), NAN, ULP_INVALID);
+	fails += ULP_EXPECT_EXC(ulp_expect_d, "sqrt(-inf)", sqrt(-INFINITY), NAN, ULP_INVALID);
 	fails += ulp_expect_d("sqrt(1)", sqrt(1.0), 1.0);
 	fails += ulp_expect_d("sqrt(4)", sqrt(4.0), 2.0);
 	fails += ulp_expect_d("sqrt(2)", sqrt(2.0), 0x1.6a09e667f3bcdp+0);
+
+	ulp_report_skipped();
 
 	return fails != 0;
 }

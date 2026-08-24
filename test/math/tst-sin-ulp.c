@@ -47,8 +47,8 @@
 do {									   \
 	fails += expect(#fn "(0)", fn((type)0), (type)0);		   \
 	fails += expect(#fn "(-0)", fn(-(type)0), -(type)0);		   \
-	fails += expect(#fn "(inf)", fn((type)INFINITY), (type)NAN);	   \
-	fails += expect(#fn "(-inf)", fn(-(type)INFINITY), (type)NAN);	   \
+	fails += ULP_EXPECT_EXC(expect, #fn "(inf)", fn((type)INFINITY), (type)NAN, ULP_INVALID);	   \
+	fails += ULP_EXPECT_EXC(expect, #fn "(-inf)", fn(-(type)INFINITY), (type)NAN, ULP_INVALID);	   \
 	fails += expect(#fn "(nan)", fn((type)NAN), (type)NAN);		   \
 } while (0)
 
@@ -118,6 +118,8 @@ int main(void)
 	COS_SPECIALS(cosl, ulp_expect_l, long double);
 
 	fails += sincos_agrees();
+
+	ulp_report_skipped();
 
 	return fails != 0;
 }

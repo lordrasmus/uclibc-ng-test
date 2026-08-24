@@ -43,8 +43,8 @@
 do {									   \
 	fails += expect(#fn "(0)", fn((type)0), (type)0);		   \
 	fails += expect(#fn "(-0)", fn(-(type)0), -(type)0);		   \
-	fails += expect(#fn "(inf)", fn((type)INFINITY), (type)NAN);	   \
-	fails += expect(#fn "(-inf)", fn(-(type)INFINITY), (type)NAN);	   \
+	fails += ULP_EXPECT_EXC(expect, #fn "(inf)", fn((type)INFINITY), (type)NAN, ULP_INVALID);	   \
+	fails += ULP_EXPECT_EXC(expect, #fn "(-inf)", fn(-(type)INFINITY), (type)NAN, ULP_INVALID);	   \
 	fails += expect(#fn "(nan)", fn((type)NAN), (type)NAN);		   \
 } while (0)
 
@@ -62,6 +62,8 @@ int main(void)
 	SPECIALS(tan, ulp_expect_d, double);
 	SPECIALS(tanf, ulp_expect_f, float);
 	SPECIALS(tanl, ulp_expect_l, long double);
+
+	ulp_report_skipped();
 
 	return fails != 0;
 }

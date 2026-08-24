@@ -35,15 +35,17 @@ int main(void)
 	fails += ulp_expect_d("fma(-inf,0,nan)", fma(-INFINITY, 0.0, NAN), NAN);
 	fails += ulp_expect_d("fma(0,inf,nan)", fma(0.0, INFINITY, NAN), NAN);
 	fails += ulp_expect_d("fma(0,-inf,nan)", fma(0.0, -INFINITY, NAN), NAN);
-	fails += ulp_expect_d("fma(inf,0,1)", fma(INFINITY, 0.0, 1.0), NAN);
-	fails += ulp_expect_d("fma(0,inf,1)", fma(0.0, INFINITY, 1.0), NAN);
-	fails += ulp_expect_d("fma(inf,1,-inf)", fma(INFINITY, 1.0, -INFINITY), NAN);
+	fails += ULP_EXPECT_EXC(ulp_expect_d, "fma(inf,0,1)", fma(INFINITY, 0.0, 1.0), NAN, ULP_INVALID);
+	fails += ULP_EXPECT_EXC(ulp_expect_d, "fma(0,inf,1)", fma(0.0, INFINITY, 1.0), NAN, ULP_INVALID);
+	fails += ULP_EXPECT_EXC(ulp_expect_d, "fma(inf,1,-inf)", fma(INFINITY, 1.0, -INFINITY), NAN, ULP_INVALID);
 	fails += ulp_expect_d("fma(inf,1,inf)", fma(INFINITY, 1.0, INFINITY), INFINITY);
-	fails += ulp_expect_d("fma(1,inf,-inf)", fma(1.0, INFINITY, -INFINITY), NAN);
+	fails += ULP_EXPECT_EXC(ulp_expect_d, "fma(1,inf,-inf)", fma(1.0, INFINITY, -INFINITY), NAN, ULP_INVALID);
 	fails += ulp_expect_d("fma(0,0,0)", fma(0.0, 0.0, 0.0), 0.0);
 	fails += ulp_expect_d("fma(-0,0,0)", fma(-0.0, 0.0, 0.0), 0.0);
 	fails += ulp_expect_d("fma(0,0,-0)", fma(0.0, 0.0, -0.0), 0.0);
 	fails += ulp_expect_d("fma(-0,-0,-0)", fma(-0.0, -0.0, -0.0), 0.0);
+
+	ulp_report_skipped();
 
 	return fails != 0;
 }

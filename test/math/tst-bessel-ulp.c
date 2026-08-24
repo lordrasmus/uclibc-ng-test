@@ -100,11 +100,11 @@ int main(void)
 	   __kernel_standard, and w_j0.c calls it only when _LIB_VERSION is not
 	   _IEEE_, which is what s_lib_version.c sets by default.  So the value
 	   comes from e_j0.c, where a negative argument returns zero/zero.  */
-	fails += ulp_expect_d("y0(-1)", y0(-1.0), NAN);
+	fails += ULP_EXPECT_EXC(ulp_expect_d, "y0(-1)", y0(-1.0), NAN, ULP_INVALID);
 	fails += ulp_expect_d("y1(nan)", y1(NAN), NAN);
 	fails += ulp_expect_d("y1(inf)", y1(INFINITY), 0.0);
 	fails += ulp_expect_d("y1(0)", y1(0.0), -INFINITY);
-	fails += ulp_expect_d("y1(-1)", y1(-1.0), NAN);
+	fails += ULP_EXPECT_EXC(ulp_expect_d, "y1(-1)", y1(-1.0), NAN, ULP_INVALID);
 
 	fails += ulp_expect_d("jn(0,nan)", jn(0, NAN), NAN);
 	fails += ulp_expect_d("jn(0,inf)", jn(0, INFINITY), 0.0);
@@ -113,7 +113,9 @@ int main(void)
 	fails += ulp_expect_d("yn(0,nan)", yn(0, NAN), NAN);
 	fails += ulp_expect_d("yn(0,inf)", yn(0, INFINITY), 0.0);
 	fails += ulp_expect_d("yn(0,0)", yn(0, 0.0), -INFINITY);
-	fails += ulp_expect_d("yn(0,-1)", yn(0, -1.0), NAN);
+	fails += ULP_EXPECT_EXC(ulp_expect_d, "yn(0,-1)", yn(0, -1.0), NAN, ULP_INVALID);
+
+	ulp_report_skipped();
 
 	return fails != 0;
 }

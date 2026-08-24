@@ -47,8 +47,8 @@ int main(void)
 	   atanh outside [-1, 1], and atanh is infinite at either end.  */
 	fails += ulp_expect_d("acosh(1)", acosh(1.0), 0.0);
 	fails += ulp_expect_d("acosh(inf)", acosh(INFINITY), INFINITY);
-	fails += ulp_expect_d("acosh(-inf)", acosh(-INFINITY), NAN);
-	fails += ulp_expect_d("acosh(-1.125)", acosh(-1.125), NAN);
+	fails += ULP_EXPECT_EXC(ulp_expect_d, "acosh(-inf)", acosh(-INFINITY), NAN, ULP_INVALID);
+	fails += ULP_EXPECT_EXC(ulp_expect_d, "acosh(-1.125)", acosh(-1.125), NAN, ULP_INVALID);
 	fails += ulp_expect_d("acosh(nan)", acosh(NAN), NAN);
 
 	fails += ulp_expect_d("asinh(0)", asinh(0.0), 0.0);
@@ -59,10 +59,12 @@ int main(void)
 
 	fails += ulp_expect_d("atanh(0)", atanh(0.0), 0.0);
 	fails += ulp_expect_d("atanh(-0)", atanh(-0.0), -0.0);
-	fails += ulp_expect_d("atanh(1)", atanh(1.0), INFINITY);
-	fails += ulp_expect_d("atanh(-1)", atanh(-1.0), -INFINITY);
-	fails += ulp_expect_d("atanh(1.125)", atanh(1.125), NAN);
+	fails += ULP_EXPECT_EXC(ulp_expect_d, "atanh(1)", atanh(1.0), INFINITY, ULP_DIVBYZERO);
+	fails += ULP_EXPECT_EXC(ulp_expect_d, "atanh(-1)", atanh(-1.0), -INFINITY, ULP_DIVBYZERO);
+	fails += ULP_EXPECT_EXC(ulp_expect_d, "atanh(1.125)", atanh(1.125), NAN, ULP_INVALID);
 	fails += ulp_expect_d("atanh(nan)", atanh(NAN), NAN);
+
+	ulp_report_skipped();
 
 	return fails != 0;
 }

@@ -122,7 +122,20 @@
 #include <complex.h>
 #include <math.h>
 #include <float.h>
-#include "fenv.h"
+/* The real header where the port has fenv, and nothing at all where it does
+   not.  There used to be a fenv.h in this directory -- two lines, "until we
+   support fenv", defining feclearexcept away and fetestexcept to zero -- and
+   because the include was quoted it shadowed the real header on every target,
+   including the two configurations that do have fenv.  It defined no FE_*
+   macros either, so every #ifdef FE_INVALID below was dead and the 199
+   exception expectations in this file were checked nowhere at all, while the
+   summary announced hundreds of "tests for exception flags executed".  */
+#ifdef __UCLIBC_HAS_FENV__
+# include <fenv.h>
+#else
+# define feclearexcept(x)	((void) 0)
+# define fetestexcept(x)	(0)
+#endif
 #include <limits.h>
 
 #include <errno.h>
@@ -163,6 +176,7 @@ static int output_ulps;	/* Should ulps printed?  */
 static int noErrors;	/* number of errors */
 static int noTests;	/* number of tests (without testing exceptions) */
 static int noExcTests;	/* number of tests for exception flags */
+static int noExcSkipped;	/* expectations we could not check, no fenv */
 static int noXFails;	/* number of expected failures.  */
 static int noXPasses;	/* number of unexpected passes.  */
 
@@ -442,6 +456,14 @@ test_single_exception (const char *test_name,
 static void
 test_exceptions (const char *test_name, int exception)
 {
+#ifndef __UCLIBC_HAS_FENV__
+  /* Nothing to read the flags with.  Count what was expected, so that the
+     summary says how much of the standard went unchecked instead of implying
+     it was covered.  */
+  if (exception & (INVALID_EXCEPTION | DIVIDE_BY_ZERO_EXCEPTION))
+    ++noExcSkipped;
+  return;
+#endif
   ++noExcTests;
 #ifdef FE_DIVBYZERO
   if ((exception & DIVIDE_BY_ZERO_EXCEPTION_OK) == 0)
@@ -3854,6 +3876,9 @@ main (int argc, char **argv)
   printf ("\nTest suite completed:\n");
   printf ("  %d test cases plus %d tests for exception flags executed.\n",
 	  noTests, noExcTests);
+  if (noExcSkipped)
+    printf ("  %d exception expectations skipped -- no fenv on this port.\n",
+	    noExcSkipped);
   if (noXFails)
     printf ("  %d expected failures occurred.\n", noXFails);
   if (noXPasses)

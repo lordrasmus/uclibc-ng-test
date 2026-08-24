@@ -23,6 +23,17 @@
 #include <math.h>
 #include <features.h>
 
+/* The real header where the port has fenv, and stand-ins where it does not.
+   Not a local fenv.h: there used to be one in this directory, and because the
+   include in libm-test.inc was quoted it shadowed the real header on every
+   target, so no exception was ever checked anywhere.  */
+#ifdef __UCLIBC_HAS_FENV__
+# include <fenv.h>
+#else
+# define feclearexcept(x)	((void) 0)
+# define fetestexcept(x)	(0)
+#endif
+
 #if defined __UCLIBC_LIBM_ACCURATE__
 # define TIER				"accurate"
 # define BUDGET(small, optimized, accurate)	(accurate)
@@ -277,6 +288,62 @@ static inline int ulp_sweep_scaled_n(const char *name,
 
 ULP_DEFINE_SWEEP2(l, long double, ulp_d2, ulp_steps_l)
 
+/* What a special case must raise, beside what it must return.  The two flags
+   the C standard fixes for these functions and libm-test.inc knew about; the
+   rest of FE_* is not something fdlibm sets on purpose.  */
+#define ULP_NONE	0x0
+#define ULP_INVALID	0x1
+#define ULP_DIVBYZERO	0x2
+
+/* Expectations that could not be checked because the port has no fenv.  Printed
+   at the end of a test rather than passed over, so that a run says how much of
+   the standard it left alone -- the summary in libm-test.inc claimed hundreds of
+   exception tests for years while checking none.  */
+static int ulp_exc_skipped;
+
+static inline void ulp_clear_exc(void)
+{
+	feclearexcept (FE_ALL_EXCEPT);
+}
+
+/* Read the flags.  Called before anything else in ulp_expect_exc_*, so that it
+   sees what the function under test left and not what printf did.  */
+static inline int ulp_check_exc(const char *what, int want)
+{
+#ifdef __UCLIBC_HAS_FENV__
+	int fails = 0;
+
+# ifdef FE_INVALID
+	if (!!fetestexcept (FE_INVALID) != !!(want & ULP_INVALID)) {
+		printf("FAIL: %s %s invalid\n", what,
+		       (want & ULP_INVALID) ? "did not raise" : "raised");
+		fails++;
+	}
+# endif
+# ifdef FE_DIVBYZERO
+	if (!!fetestexcept (FE_DIVBYZERO) != !!(want & ULP_DIVBYZERO)) {
+		printf("FAIL: %s %s divide-by-zero\n", what,
+		       (want & ULP_DIVBYZERO) ? "did not raise" : "raised");
+		fails++;
+	}
+# endif
+	feclearexcept (FE_ALL_EXCEPT);
+	return fails;
+#else
+	(void) what;
+	if (want != ULP_NONE)
+		ulp_exc_skipped++;
+	return 0;
+#endif
+}
+
+static inline void ulp_report_skipped(void)
+{
+	if (ulp_exc_skipped)
+		printf("%d exception expectations skipped -- no fenv on this port\n",
+		       ulp_exc_skipped);
+}
+
 /* Special cases are exact: no budget, and +0 is not -0.
  *
  * cmp is the type the comparison is made in, which for the long double entry
@@ -307,5 +374,19 @@ static inline int ulp_expect_##sfx(const char *what, type got, type want) \
 ULP_DEFINE_EXPECT(d, double, double)
 ULP_DEFINE_EXPECT(f, float, float)
 ULP_DEFINE_EXPECT(l, long double, double)
+
+/* Value and flags in one.  A statement expression, because the order matters:
+   clear, then call, then read -- two arguments of a function call would not be
+   sequenced, and printf inside the value check can raise flags of its own.
+   expfn is the plain checker to use, so this works inside a macro that does not
+   know which of the three it is dealing with.  */
+#define ULP_EXPECT_EXC(expfn, what, call, want, exc) __extension__ ({	\
+	__typeof (call) __v;						\
+	int __f;							\
+									\
+	ulp_clear_exc ();						\
+	__v = (call);							\
+	__f = ulp_check_exc (what, exc);				\
+	__f + expfn (what, __v, want); })
 
 #endif /* ULP_CHECK_H */

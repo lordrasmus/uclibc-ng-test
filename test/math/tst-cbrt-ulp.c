@@ -61,10 +61,12 @@ int main(void)
 
 	fails += ulp_expect_d("log1p(0)", log1p(0.0), 0.0);
 	fails += ulp_expect_d("log1p(-0)", log1p(-0.0), -0.0);
-	fails += ulp_expect_d("log1p(-1)", log1p(-1.0), -INFINITY);
-	fails += ulp_expect_d("log1p(-2)", log1p(-2.0), NAN);
+	fails += ULP_EXPECT_EXC(ulp_expect_d, "log1p(-1)", log1p(-1.0), -INFINITY, ULP_DIVBYZERO);
+	fails += ULP_EXPECT_EXC(ulp_expect_d, "log1p(-2)", log1p(-2.0), NAN, ULP_INVALID);
 	fails += ulp_expect_d("log1p(inf)", log1p(INFINITY), INFINITY);
 	fails += ulp_expect_d("log1p(nan)", log1p(NAN), NAN);
+
+	ulp_report_skipped();
 
 	return fails != 0;
 }

@@ -56,18 +56,18 @@ int main(void)
 	   and zeros, which is the whole reason it exists beside atan.  */
 	fails += ulp_expect_d("asin(0)", asin(0.0), 0.0);
 	fails += ulp_expect_d("asin(-0)", asin(-0.0), -0.0);
-	fails += ulp_expect_d("asin(inf)", asin(INFINITY), NAN);
-	fails += ulp_expect_d("asin(-inf)", asin(-INFINITY), NAN);
+	fails += ULP_EXPECT_EXC(ulp_expect_d, "asin(inf)", asin(INFINITY), NAN, ULP_INVALID);
+	fails += ULP_EXPECT_EXC(ulp_expect_d, "asin(-inf)", asin(-INFINITY), NAN, ULP_INVALID);
 	fails += ulp_expect_d("asin(nan)", asin(NAN), NAN);
-	fails += ulp_expect_d("asin(1.125)", asin(1.125), NAN);
+	fails += ULP_EXPECT_EXC(ulp_expect_d, "asin(1.125)", asin(1.125), NAN, ULP_INVALID);
 	fails += ulp_expect_d("asin(1)", asin(1.0), M_PI_2);
 
 	fails += ulp_expect_d("acos(1)", acos(1.0), 0.0);
 	fails += ulp_expect_d("acos(0)", acos(0.0), M_PI_2);
 	fails += ulp_expect_d("acos(-0)", acos(-0.0), M_PI_2);
-	fails += ulp_expect_d("acos(inf)", acos(INFINITY), NAN);
+	fails += ULP_EXPECT_EXC(ulp_expect_d, "acos(inf)", acos(INFINITY), NAN, ULP_INVALID);
 	fails += ulp_expect_d("acos(nan)", acos(NAN), NAN);
-	fails += ulp_expect_d("acos(1.125)", acos(1.125), NAN);
+	fails += ULP_EXPECT_EXC(ulp_expect_d, "acos(1.125)", acos(1.125), NAN, ULP_INVALID);
 
 	fails += ulp_expect_d("atan(0)", atan(0.0), 0.0);
 	fails += ulp_expect_d("atan(-0)", atan(-0.0), -0.0);
@@ -84,6 +84,8 @@ int main(void)
 	fails += ulp_expect_d("atan2(0,-0)", atan2(0.0, -0.0), M_PI);
 	fails += ulp_expect_d("atan2(nan,1)", atan2(NAN, 1.0), NAN);
 	fails += ulp_expect_d("atan2(1,nan)", atan2(1.0, NAN), NAN);
+
+	ulp_report_skipped();
 
 	return fails != 0;
 }

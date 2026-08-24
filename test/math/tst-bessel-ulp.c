@@ -41,29 +41,32 @@ static double envelope(double x)
 #define JN_BUDGET	BUDGET(260, 260, 260)
 #define YN_BUDGET	BUDGET(300, 300, 300)
 
-/* How far the worst point may be, and this is a requirement rather than an
-   observation.  It follows the implementation, not the setting -- and there is
-   no variant of this function, so all three settings run the same fdlibm code
-   and the accurate column is one and not nought.  fdlibm's own claim is an
-   error below one ulp, so the neighbouring representable value is as far as it
-   may land.  */
-#define BASE_STEPS	BUDGET(1, 1, 1)
-#define N_STEPS		BUDGET(1, 1, 1)
+/* How far the worst point may be.  None of the six files claims an accuracy --
+   e_j0.c, e_j1.c and e_jn.c say nothing about ulp -- and there is nothing
+   better anywhere to hold them to: glibc still ships this same 1993 Sun code
+   and CORE-MATH has no Bessel functions at all.  So the limit is what the
+   implementation delivers, and it is the same in all three settings because
+   there is no variant.
 
-/* jn does not meet that, and is expected to fail here.  It computes the ratio
-   Jn/J0 by backward recurrence and then normalises with j0:
- *
- *	b = (t * __ieee754_j0(x) / b);		libm/e_jn.c
- *
- * Near a zero of j0 that factor has full absolute but no relative accuracy, and
- * jn inherits it.  At x = 2.4048255576957729, the first zero of j0 as a double,
- * jn(3, x) and jn(5, x) return -inf where the answers are 0.199 and 0.0164, and
- * jn(4, x) is 37 percent low; a third of the points of jn_ref sit on and beside
- * that zero and the seven after it, so the test finds them.  Measured on i686,
- * where the x87 keeps j0 more accurate in absolute terms and so softens it, the
- * worst point is 25192 steps out; on a target that rounds every operation to
- * double it is 5.8e14.  A fix has to normalise with something that is not small
- * there.  */
+   Measured on five targets, which fall into two groups along the fused
+   multiply-add: aarch64 and kvx have the instruction and come out at 2 for
+   y0 and y1 and 5 for yn, while mips64, nios2 and sparc64 give 3 and 7.  The
+   higher, uniform number is the one set here.
+
+   yn stands apart at seven because it is the only one that recurs forward:
+   it starts from y0 and y1 and steps up, so at n = 5 -- where its worst point
+   is -- it has accumulated five roundings that the others never do.  */
+#define BASE_STEPS	BUDGET(3, 3, 3)
+#define JN_STEPS	BUDGET(3, 3, 3)
+#define YN_STEPS	BUDGET(7, 7, 7)
+
+/* A third of the points of jn_ref sit on and beside the first eight zeros of
+   j0 and of j1, and they are there for a reason: jn used to normalise its
+   backward recurrence with j0 alone, which has no relative accuracy at its own
+   zeros, and returned -inf for jn(3, 2.4048255576957729) where the answer is
+   0.199.  This test reported 5.8e14 steps for it.  Since uClibc-ng normalises
+   with whichever of j0 and j1 is further from zero, it is down to three, so
+   keep those points: they are what would catch the same mistake again.  */
 
 int main(void)
 {
@@ -78,9 +81,9 @@ int main(void)
 	fails += ulp_sweep_scaled_d("y1", y1, envelope, y1_ref,
 				    NELEM(y1_ref), Y1_BUDGET, BASE_STEPS);
 	fails += ulp_sweep_scaled_n("jn", jn, envelope, jn_ref,
-				    NELEM(jn_ref), JN_BUDGET, N_STEPS);
+				    NELEM(jn_ref), JN_BUDGET, JN_STEPS);
 	fails += ulp_sweep_scaled_n("yn", yn, envelope, yn_ref,
-				    NELEM(yn_ref), YN_BUDGET, N_STEPS);
+				    NELEM(yn_ref), YN_BUDGET, YN_STEPS);
 
 	/* The cases the six bodies in libm-test.inc checked.  j0 and j1 are
 	   even and odd, defined for every real; y0 and y1 are -inf at zero and

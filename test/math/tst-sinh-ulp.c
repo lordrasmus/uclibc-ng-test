@@ -27,13 +27,19 @@
 
 #define F_BUDGET	0
 
-/* How far the worst point may be, and this is a requirement rather than an
-   observation.  It follows the implementation, not the setting -- and there is
-   no variant of this function, so all three settings run the same fdlibm code
-   and the accurate column is one and not nought.  fdlibm's own claim is an
-   error below one ulp, so the neighbouring representable value is as far as it
-   may land.  */
-#define STEPS	BUDGET(1, 1, 1)
+/* How far the worst point may be.  Neither file claims an accuracy at all --
+   e_sinh.c and s_tanh.c say nothing about ulp, unlike e_log.c or s_erf.c -- so
+   there is nothing to hold them to but what they deliver, and the accurate
+   column is not nought because neither function has an accurate variant.
+
+   The two do not share a number, though, even without a variant of their own:
+   both are built on expm1, and that has one.  With it, sinh comes down to a
+   single step while tanh does not, because tanh's error is in its own
+   1 - 2/(t+2) and not in the expm1 underneath -- substituting a correctly
+   rounded expm1 on the host leaves the worst case at two steps, at the same
+   argument the accurate target reports.  Measured: sinh 2/2/1, tanh 2/2/2.  */
+#define SINH_STEPS	BUDGET(2, 2, 1)
+#define TANH_STEPS	BUDGET(2, 2, 2)
 
 /* The cases sinh_test() checked, for each of the three entry points. */
 #define SINH_SPECIALS(fn, expect, type)					   \
@@ -60,18 +66,18 @@ int main(void)
 	int fails = 0;
 
 	fails += ulp_sweep1_d("sinh", sinh, sinh_ref, NELEM(sinh_ref),
-			      SINH_BUDGET, STEPS);
+			      SINH_BUDGET, SINH_STEPS);
 	fails += ulp_sweep1_f("sinhf", sinhf, sinhf_ref, NELEM(sinhf_ref),
-			      F_BUDGET, STEPS);
+			      F_BUDGET, SINH_STEPS);
 	fails += ulp_sweep1_l("sinhl", sinhl, sinh_ref, NELEM(sinh_ref),
-			      SINH_BUDGET, STEPS);
+			      SINH_BUDGET, SINH_STEPS);
 
 	fails += ulp_sweep1_d("tanh", tanh, tanh_ref, NELEM(tanh_ref),
-			      TANH_BUDGET, STEPS);
+			      TANH_BUDGET, TANH_STEPS);
 	fails += ulp_sweep1_f("tanhf", tanhf, tanhf_ref, NELEM(tanhf_ref),
-			      F_BUDGET, STEPS);
+			      F_BUDGET, TANH_STEPS);
 	fails += ulp_sweep1_l("tanhl", tanhl, tanh_ref, NELEM(tanh_ref),
-			      TANH_BUDGET, STEPS);
+			      TANH_BUDGET, TANH_STEPS);
 
 	SINH_SPECIALS(sinh, ulp_expect_d, double);
 	SINH_SPECIALS(sinhf, ulp_expect_f, float);

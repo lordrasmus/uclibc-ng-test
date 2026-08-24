@@ -14,12 +14,12 @@
    one step.  None has an optimized or an accurate variant of its own; CORE-MATH
    has all three.
 
-   cosh is the exception in the accurate column, and not because of cosh: it is
-   built on expm1 and exp, and those do have variants, so it reaches 104 there
-   where the other two settings stay at 96.  sinh behaves the same way and is
-   one step better for it -- see tst-sinh-ulp.c.  */
+   cosh is the exception, and not because of cosh: it is built on expm1 and exp,
+   and both of those have an optimized and an accurate variant, so cosh inherits
+   them and reaches 104 on either setting where the small one stays at 96.  sinh
+   behaves the same way and is one step better for it -- see tst-sinh-ulp.c.  */
 #define CBRT_BUDGET	BUDGET(70, 70, 70)
-#define COSH_BUDGET	BUDGET(102, 102, 104)
+#define COSH_BUDGET	BUDGET(102, 104, 104)
 #define LOG1P_BUDGET	BUDGET(22, 22, 22)
 #define F_BUDGET	0
 

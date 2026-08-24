@@ -23,13 +23,14 @@
    that conversion: measured, no variant misses a single float point.  */
 #define F_BUDGET	0
 
-/* Why this one is 48 and not 1: lgamma has zeros at 1, at 2 and between the
+/* Why this one is 45 and not 1: lgamma has zeros at 1, at 2 and between the
    negative poles, fdlibm reaches them by subtraction, and the relative error
    there is genuinely large -- 45 representable values at x = -2.7375, where the
    result is 0x1.3p-6.  Those points are in the table on purpose, since that
    weakness is worth showing; the sensitive half of this test is the count
-   above.  */
-#define STEPS	BUDGET(1, 1, 0)
+   above.  The accurate variant is held to nought all the same: CORE-MATH hits
+   that same point exactly, so the loss is fdlibm's formula, not the problem.  */
+#define STEPS	BUDGET(45, 45, 0)
 
 /* The cases lgamma_test() checked.  lgamma is even about its poles: it is +inf
    at zero and at every negative integer, and +inf at both infinities.  */

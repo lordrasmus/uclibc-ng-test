@@ -18,7 +18,7 @@
 #define D_BUDGET	BUDGET(110, 4, 0)
 
 /* No variant lands further than one representable value from the reference. */
-#define STEPS		1
+#define STEPS	BUDGET(1, 1, 0)
 
 /* expf computes in double and converts (libm/w_expf.c), which rounds twice.
    Measured, and not what one would guess: every variant hits every one of the

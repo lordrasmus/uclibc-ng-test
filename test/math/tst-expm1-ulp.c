@@ -17,7 +17,7 @@
 #define D_BUDGET	BUDGET(65, 65, 0)
 
 /* No variant lands further than one representable value from the reference. */
-#define STEPS		1
+#define STEPS	BUDGET(1, 1, 0)
 
 /* expm1f computes in double and converts (libm/float_wrappers.c).  Measured:
    every variant hits every one of the 500 float points, the double error

@@ -18,7 +18,7 @@
 #define D_BUDGET	BUDGET(260, 8, 0)
 
 /* No variant lands further than one representable value from the reference. */
-#define STEPS		1
+#define STEPS	BUDGET(1, 1, 0)
 
 /* hypotf computes in double and converts (libm/w_hypotf.c).  Measured: every
    variant hits every one of the 343 float pairs, so this holds the wrapper to

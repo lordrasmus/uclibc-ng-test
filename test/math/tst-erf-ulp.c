@@ -26,12 +26,13 @@
    boundary, so this holds the wrappers to the double implementation.  */
 #define F_BUDGET	0
 
-/* How far the worst point may be.  erf stays within one representable value in
-   every variant; fdlibm's erfc reaches two, and three where the compiler
-   contracts a multiply and an add into one instruction, which is why erfc is
-   allowed three and erf one.  */
-#define ERF_STEPS	1
-#define ERFC_STEPS	3
+/* How far the worst point may be, and this is a requirement rather than an
+   observation.  It follows the implementation, not the setting: the accurate
+   variant is correctly rounded, so nought; the optimized ones aim below half an
+   ulp and fdlibm's own claim is below one, so either may land on the
+   neighbouring representable value but no further.  */
+#define ERF_STEPS	BUDGET(1, 1, 0)
+#define ERFC_STEPS	BUDGET(1, 1, 0)
 
 /* The cases erf_test() checked, for each of the three entry points. */
 #define ERF_SPECIALS(fn, expect, type)					   \

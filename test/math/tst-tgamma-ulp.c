@@ -26,7 +26,7 @@
    its argument by |lgamma(x)|, which is 359 at x = 100 and 600 at x = 156, where
    that 1269 is measured.  A Lanczos approximation stays within about an ulp.  */
 #define D_BUDGET	BUDGET(760, 730, 0)
-#define STEPS		BUDGET(1300, 8, 1)
+#define STEPS	BUDGET(1, 1, 0)
 
 /* tgammaf computes in double and converts, and every variant hits every one of
    the 501 float points -- even the small one, whose double error disappears in

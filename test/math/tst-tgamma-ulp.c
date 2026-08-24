@@ -2,31 +2,34 @@
 
    This replaces tgamma_test() in libm-test.inc.  See ulp-check.h.
 
-   The three settings are three different implementations here, which is not the
-   usual case: the small one computes exp(lgamma(x)) and is not a gamma function
-   at all, the optimized one is musl's Lanczos approximation, the accurate one is
-   CORE-MATH.  */
+   Two implementations here: musl's Lanczos approximation on the small and the
+   optimized setting, CORE-MATH on the accurate one.  Until uClibc-ng moved the
+   Lanczos file into libm/e_tgamma.c the small setting computed exp(lgamma(x))
+   and was not a gamma function at all.  */
 
 #include "ulp-check.h"
 #include "tgamma-ref.h"
 
-/* Measured on riscv32 over the 999 points of the table.  Host numbers would be
-   wrong for the small variant: it computes exp(lgamma(x)), so its result
-   depends on the exp and the log underneath it, and a host measurement reaches
-   glibc's rather than ours.
+/* Measured over the 999 points of the table.  The small and the optimized
+   setting run the same Lanczos file and differ only in the exp and pow beneath
+   it, which moves the count by a couple of points and leaves the worst case
+   alone -- musl halves the exponent before calling pow and squares afterwards,
+   so pow's accuracy barely reaches the result.
 
 		misses	worst
-      small	   747	  1269 steps
+      small	   721	     6 steps
       optimized	   718	     6
-      accurate	     0	     -
+      accurate	     0	     0
 
-   The interesting part is not the count -- musl's Lanczos misses nearly as
-   often as fdlibm -- but the worst case: 6 representable values instead of 1269.
-   exp(lgamma(x)) has no error bound to speak of, because exp scales the error of
-   its argument by |lgamma(x)|, which is 359 at x = 100 and 600 at x = 156, where
-   that 1269 is measured.  A Lanczos approximation stays within about an ulp.  */
+   The count is high for both because Lanczos misses the last bit nearly as
+   often as anything else does; the worst case is what matters.  For comparison,
+   the exp(lgamma(x)) this replaced was 852 steps out on aarch64 and 1269 on
+   csky -- exp scales the error of its argument by |lgamma(x)|, so the number
+   grew with the argument and differed from target to target.
+
+   Six, then, and nought where CORE-MATH runs.  */
 #define D_BUDGET	BUDGET(760, 730, 0)
-#define STEPS	BUDGET(1, 1, 0)
+#define STEPS	BUDGET(6, 6, 0)
 
 /* tgammaf computes in double and converts, and every variant hits every one of
    the 501 float points -- even the small one, whose double error disappears in

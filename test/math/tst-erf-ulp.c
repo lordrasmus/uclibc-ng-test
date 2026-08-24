@@ -32,7 +32,16 @@
    ulp and fdlibm's own claim is below one, so either may land on the
    neighbouring representable value but no further.  */
 #define ERF_STEPS	BUDGET(1, 1, 0)
-#define ERFC_STEPS	BUDGET(1, 1, 0)
+
+/* erfc gets two, because fdlibm's one-ulp claim is for erf alone: s_erf.c says
+   0.84375 was chosen "to guarantee the error is less than one ulp for erf", and
+   for erfc it bounds the rational approximations only, never the result.  erfc
+   is 1 - erf and calls exp twice, and that composition costs the extra step.
+   Measured across 38 targets, hard and soft float, both settings: erf is one
+   step out everywhere, erfc two, never three.  No margin on top, so a
+   regression shows on the next run.  Accurate stays at nought, where CORE-MATH
+   is exact.  */
+#define ERFC_STEPS	BUDGET(2, 2, 0)
 
 /* The cases erf_test() checked, for each of the three entry points. */
 #define ERF_SPECIALS(fn, expect, type)					   \

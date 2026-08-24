@@ -23,6 +23,14 @@ ifeq ($(TARGET_ARCH),sh)
 CFLAGS_basic-test += -mieee
 endif
 EXTRA_CFLAGS    := -fno-builtin
+
+# alpha traps on NaN, infinity and denormals unless the code is compiled with
+# -mieee, so every test that reaches one of those dies of SIGFPE.  uClibc-ng
+# builds itself that way already (CPU_CFLAGS-y in Rules.mak); the tests have to
+# match, or 22 of them here exit 136.
+ifeq ($(TARGET_ARCH),alpha)
+EXTRA_CFLAGS    += -mieee
+endif
 EXTRA_LDFLAGS   := -lm
 
 PERL := perl

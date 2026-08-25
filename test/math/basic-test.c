@@ -98,7 +98,11 @@ NAME (void)								      \
   x1 = - HUGEVAL;							      \
   check (#FLOAT " isinf (-HUGE_VALx) == -1", isinf (x1) == -1);		      \
 }
-#ifndef DO_C99_MATH
+/* __DO_C99_MATH__, with the underscores: that is the name math.h defines, and
+   the bare DO_C99_MATH this used to test is defined nowhere.  The body above
+   was therefore replaced by an empty one on every target -- isinf and isnan on
+   all three widths, nan/nanf/nanl and the HUGE_VAL* checks never ran.  */
+#ifndef __DO_C99_MATH__
 # undef TEST_FUNC
 # define TEST_FUNC(NAME, FLOAT, NANFUNC, EPSILON, HUGEVAL) \
 static void								      \

@@ -22,6 +22,16 @@
 #include <float.h>
 #include <stdio.h>
 
+/* The long double part below needs nanl and the *l entry points, which libm
+   has only when it was built with UCLIBC_HAS_LONG_DOUBLE_MATH.  math.h says
+   so itself via __NO_LONG_DOUBLE_MATH, so ask the header rather than be told
+   from the Makefile: the test suite never reads uClibc-ng's .config, so a
+   -DNO_LONG_DOUBLE from there was switched on unconditionally.  Still honour
+   the macro when it does arrive from outside.  */
+#if defined __NO_LONG_DOUBLE_MATH && !defined NO_LONG_DOUBLE
+# define NO_LONG_DOUBLE 1
+#endif
+
 static int errors = 0;
 
 

@@ -9,10 +9,26 @@ TESTS_DISABLED := libm-test
 
 # gamma (removed from TESTS, need to add "small errors are ok" machinery there)
 TESTS_DISABLED += gamma
-ifeq ($(UCLIBC_HAS_LONG_DOUBLE_MATH),)
-TESTS_DISABLED += test-ldouble test-ildoubl compile_test c99_test
-CFLAGS_basic-test := -DNO_LONG_DOUBLE
-endif
+
+# test-ldouble, test-ildoubl, compile_test and basic-test used to be gated on
+# UCLIBC_HAS_LONG_DOUBLE_MATH here.  That variable is always empty -- the test
+# suite never reads uClibc-ng's .config -- so the gate fired on every target
+# while all CI configs set the option to y, and four tests never ran anywhere.
+# Each of the three now asks math.h for __NO_LONG_DOUBLE_MATH and skips itself
+# when the *l entry points are absent; basic-test derives NO_LONG_DOUBLE the
+# same way.  c99_test was collateral: it does not mention long double at all.
+#
+# The two below stay off, but for a reason that can be named rather than an
+# always-empty variable: they cannot pass anywhere LDBL_MANT_DIG > 53.  Every
+# *l entry point is a double wrapper (libm/ldouble_wrappers.c), so the argument
+# loses its low mantissa bits before the work starts.  Measured on i686, where
+# long double carries 64 bits: 111 errors, all of that one cause -- 76 results
+# with a mantissa cut to 53 bits, 24 integer results sitting exactly on 2^52,
+# 2^53, 2^56 or 2^63, and 11 per-function ulp budgets overrun.  fabsl(-e) is
+# wrong too, which shows it is not a question of accuracy: fabs is exact in any
+# precision and can only miss because the value went through double.  Turn
+# these on when long double is implemented per format, not wrapped.
+TESTS_DISABLED += test-ldouble test-ildoubl
 
 DODIFF_rint     := 1
 DODIFF_signgam  := 1

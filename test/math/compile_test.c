@@ -1,4 +1,15 @@
 #include <math.h>
+#include <stdio.h>
+
+/* testl below calls some sixty *l entry points, which libm has only when it
+   was built with UCLIBC_HAS_LONG_DOUBLE_MATH -- otherwise this does not link.
+   math.h reports that as __NO_LONG_DOUBLE_MATH, so ask the header: the test
+   suite never reads uClibc-ng's .config and the Makefile cannot tell.
+   testf stays either way; its only long double is the second argument of
+   nexttowardf, which exists regardless.  */
+#ifdef __NO_LONG_DOUBLE_MATH
+# define NO_LONG_DOUBLE 1
+#endif
 
 static int testf(float float_x, long double long_double_x, /*float complex float_complex_x,*/ int int_x, long long_x)
 {
@@ -67,6 +78,7 @@ r += truncf(float_x);
 return r;
 }
 
+#ifndef NO_LONG_DOUBLE
 static int testl(long double long_double_x, int int_x, long long_x)
 {
 int r = 0;
@@ -133,9 +145,17 @@ r += tgammal(long_double_x);
 r += truncl(long_double_x);
 return r;
 }
+#endif
 
 int main(int argc, char **argv)
 {
         /* Always 0 but gcc hopefully won't be able to notice */
-        return 5 & ((long)&testf) & ((long)&testl) & 2;
+        int r = 5 & ((long)&testf) & 2;
+
+#ifdef NO_LONG_DOUBLE
+        puts("SKIP: built without UCLIBC_HAS_LONG_DOUBLE_MATH, libm has no *l");
+        return r + 23;	/* 23 is the runner's skip status */
+#else
+        return r & ((long)&testl);
+#endif
 }

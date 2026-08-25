@@ -28,16 +28,26 @@ do { \
 } while (0)
 
 /* For the two-argument comparison macros.  No hex dump: what matters about
-   these is the relation they report, and both operands are printed anyway. */
+   these is the relation they report, and both operands are printed anyway.
+
+   The operands go through volatile variables rather than into the macro
+   directly, for two reasons.  Handed two literals, the compiler answers the
+   comparison itself and the test checks the folding rather than the target's
+   code.  And kvx's gcc 9.4.1 cannot expand isunordered() against a floating
+   point constant at all -- "unrecognizable insn" for an unge:DI holding a
+   const_double, an internal compiler error in extract_insn.  A constant in
+   either position is enough; two variables are fine, and the other five
+   comparison macros take a constant without complaint.  */
 #define check_i2(func, p1, p2, expected) \
 do { \
 	int err; \
-	long long result = func(p1, p2); \
+	volatile double v1 = (p1), v2 = (p2); \
+	long long result = func(v1, v2); \
 	errors += (err = (result != (expected))); \
 	err \
 	? printf("FAIL: %s(%g, %g)=%lld (expected %lld)\n", \
-		#func, (double)(p1), (double)(p2), result, (long long)(expected)) \
-	: printf("PASS: %s(%g, %g)=%lld\n", #func, (double)(p1), (double)(p2), result); \
+		#func, (double)(v1), (double)(v2), result, (long long)(expected)) \
+	: printf("PASS: %s(%g, %g)=%lld\n", #func, (double)(v1), (double)(v2), result); \
 } while (0)
 
 #define HEXFMT "%08llx"
@@ -198,12 +208,14 @@ int main(void)
 	check_i2(isless, 0.0, minus_zero, 0);
 	check_i2(islessgreater, 0.0, minus_zero, 0);
 
-	/* The macros are type-generic, so give them the other two widths as
-	   well -- the comparison ones expand to a compiler builtin and need no
-	   symbol, but the dispatch is still worth exercising.  */
-	check_i2(isgreater, HUGE_VALL, DBL_MAX, 1);
-	check_i2(isless, -HUGE_VALF, -DBL_MAX, 1);
-	check_i2(isunordered, nan_value, HUGE_VALL, 1);
+	/* No float or long double operands here, on purpose.  These six macros
+	   expand to a compiler builtin and reach no symbol in libm, so their
+	   width dispatch is the compiler's business and not this library's --
+	   and check_i2 takes its operands through volatile double anyway, which
+	   would narrow them before the macro ever saw them.  The width that
+	   does matter is covered above by the classification macros, which do
+	   call into libm: __fpclassifyl, __isinfl, __isnanl and __signbitl all
+	   turn up in this test's undefined symbols.  */
 
 	printf("Errors: %d\n", errors);
 	return errors;

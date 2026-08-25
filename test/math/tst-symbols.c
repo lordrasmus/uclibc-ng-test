@@ -265,6 +265,9 @@ static const char *gone[64];	/* a real gap is one name, not a hundred */
 
 static void surface(void)
 {
+	int k;	/* declared here, not in the for: the suite sets no -std= and
+		   avr32's gcc 4.4.7 defaults to gnu89, which rejects it */
+
 	if (!&_DYNAMIC) {
 		puts("SKIP: statically linked -- a weak reference does not pull an\n"
 		     "      archive member, so the symbol check cannot run here");
@@ -369,7 +372,7 @@ static void surface(void)
 		return;
 	}
 
-	for (int k = 0; k < missing && k < (int) (sizeof gone / sizeof gone[0]); k++)
+	for (k = 0; k < missing && k < (int) (sizeof gone / sizeof gone[0]); k++)
 		printf("MISSING: %s\n", gone[k]);
 	if (missing > (int) (sizeof gone / sizeof gone[0]))
 		printf("MISSING: and %d more\n",

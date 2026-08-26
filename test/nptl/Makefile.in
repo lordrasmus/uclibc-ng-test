@@ -4,6 +4,15 @@
 # build every test additionally at -O2 (see Test.mak)
 O2_TWINS := 1
 
+# tst-tls4 with its two modules, and tst-tls5 with its seven, ask for these
+# macros and are the only files here that do.  They were defined in
+# test/tls/Makefile.in only, so both tests compiled to an empty body and
+# reported PASS on every target.
+CFLAGS += -DUSE_TLS=1 -DHAVE___THREAD=1
+ifneq ($(TARGET_ARCH),alpha)
+CFLAGS += -DHAVE_TLS_MODEL_ATTRIBUTE=1
+endif
+
 ifeq ($(TARGET_ARCH),metag)
 TESTS_DISABLED := tst-cleanup0 tst-cleanupx0
 endif
@@ -79,6 +88,12 @@ TESTS += tst-clock tst-clock_nanosleep tst-cpuclock1 tst-cpuclock2	\
 ifeq ($(NO_DL),1)
 TESTS_DISABLED += tst-tls3 tst-tls4 tst-tls5 tst-atfork2 tst-cancelx4-pie
 endif
+
+# tst-tls5 needs two things a test cannot see: attribute_hidden, and the size
+# and alignment of struct pthread, which it registers as a TLS object to check
+# that nothing overlaps the thread descriptor.  Disabled by name rather than
+# left to compile to an empty body, which is what it did until now.
+TESTS_DISABLED += tst-tls5
 
 
 ifeq ($(TARGET_ARCH),i386)

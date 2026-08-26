@@ -41,6 +41,32 @@ void print_semid_ds(struct semid_ds *ds) {
 static const int noarg_cmds[] = { GETPID, GETNCNT, GETZCNT };
 static const char *const noarg_names[] = { "GETPID", "GETNCNT", "GETZCNT" };
 
+/* Position dependent, and injective over the buffer: a stray write that
+   copies bytes from one offset of the buffer to another is then visible
+   whatever the byte order.  A constant fill would hide exactly that.  */
+#define CANARY(i) ((unsigned char) ((i) ^ 0x5a))
+
+static int check_canary(unsigned char *buf, int from, int len, const char *who)
+{
+    int i;
+
+    for (i = from; i < len; i++)
+        if (buf[i] != CANARY(i)) {
+            printf("%s wrote 0x%02x at offset %d, expected 0x%02x\n",
+                   who, buf[i], i, CANARY(i));
+            return 1;
+        }
+    return 0;
+}
+
+static void fill_canary(unsigned char *buf, int len)
+{
+    int i;
+
+    for (i = 0; i < len; i++)
+        buf[i] = CANARY(i);
+}
+
 static int check_other_cmds(void)
 {
     unsigned short vals[NSEMS], readback[NSEMS];
@@ -96,9 +122,7 @@ static int check_other_cmds(void)
     /* Passing a fourth argument anyway keeps a stray write inside the canary
        instead of wherever a leftover register happens to point.  */
     for (i = 0; i < 3; i++) {
-        int j;
-
-        memset(canary, 0xa5, sizeof canary);
+        fill_canary(canary, sizeof canary);
         arg.array = (unsigned short *) canary;
         ret = semctl(semid, 0, noarg_cmds[i], arg);
         if (ret == -1) {
@@ -106,13 +130,7 @@ static int check_other_cmds(void)
             bad = 1;
             continue;
         }
-        for (j = 0; j < (int) sizeof canary; j++)
-            if (canary[j] != 0xa5) {
-                printf("%s wrote 0x%02x at offset %d\n",
-                       noarg_names[i], canary[j], j);
-                bad = 1;
-                break;
-            }
+        bad |= check_canary(canary, 0, sizeof canary, noarg_names[i]);
         if (noarg_cmds[i] == GETPID && ret != (int) getpid()) {
             printf("GETPID returned %d, expected %d\n", ret, (int) getpid());
             bad = 1;
@@ -126,18 +144,11 @@ static int check_other_cmds(void)
 #ifdef IPC_INFO
     /* IPC_INFO fills a struct seminfo, 40 bytes -- everything behind it must
        stay untouched. */
-    memset(canary, 0xa5, sizeof canary);
+    fill_canary(canary, sizeof canary);
     arg.array = (unsigned short *) canary;
-    if (semctl(semid, 0, IPC_INFO, arg) != -1) {
-        for (i = (int) sizeof(struct seminfo); i < (int) sizeof canary; i++)
-            if (canary[i] != 0xa5) {
-                printf("IPC_INFO wrote 0x%02x at offset %d, "
-                       "past its %d-byte struct\n",
-                       canary[i], i, (int) sizeof(struct seminfo));
-                bad = 1;
-                break;
-            }
-    }
+    if (semctl(semid, 0, IPC_INFO, arg) != -1)
+        bad |= check_canary(canary, sizeof(struct seminfo), sizeof canary,
+                            "IPC_INFO");
 #endif
 
     if (semctl(semid, 0, IPC_RMID) == -1) {

@@ -89,10 +89,16 @@ ifeq ($(NO_DL),1)
 TESTS_DISABLED += tst-tls3 tst-tls4 tst-tls5 tst-atfork2 tst-cancelx4-pie
 endif
 
-# tst-tls5 needs two things a test cannot see: attribute_hidden, and the size
-# and alignment of struct pthread, which it registers as a TLS object to check
-# that nothing overlaps the thread descriptor.  Disabled by name rather than
-# left to compile to an empty body, which is what it did until now.
+# tst-tls5 is a driver, not a test: it has no TLS objects of its own, and the
+# only module linked against it, tst-tls5mod.so, has none either -- all of them
+# sit in tst-tls5mod{a..f}.so.  glibc supplies those with LD_PRELOAD from
+# tst-tls6.sh, which runs the driver once per combination (a/e/f x b,c,d); we
+# have no equivalent, so enabled it would find cnt == 1, skip its whole layout
+# check and pass.  Two further things it wants are not reachable from outside
+# the library either: attribute_hidden, and the size and alignment of struct
+# pthread, which it registers so that an object overlapping the thread
+# descriptor is caught.  Disabled by name rather than left to compile to an
+# empty body, which is what it did until now.
 TESTS_DISABLED += tst-tls5
 
 

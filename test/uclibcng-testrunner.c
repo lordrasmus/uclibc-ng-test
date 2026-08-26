@@ -47,7 +47,7 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <sys/time.h>
+#include <time.h>
 #include <sys/stat.h>
 
 #define MAXLINE   8192
@@ -390,7 +390,7 @@ main(int argc, char **argv)
 		char *p = line, *expected_s, *binary, *subdir, *rest;
 		char outfile[MAXPATHL], goodfile[MAXPATHL], outpath[MAXPATHL];
 		int expected, ret, nw;
-		struct timeval t0, t1;
+		struct timespec t0, t1;
 		long ms;
 
 		p[strcspn(p, "\r\n")] = '\0';
@@ -426,11 +426,13 @@ main(int argc, char **argv)
 		snprintf(outfile, sizeof outfile, "%s.out", binary);
 		nw = split(rest, w, MAXWORDS, wordbuf, sizeof wordbuf, subcwd);
 
-		gettimeofday(&t0, NULL);
+		/* CLOCK_MONOTONIC, not the wall clock: stat-time64 and
+		   tst-msgctl set the system time */
+		clock_gettime(CLOCK_MONOTONIC, &t0);
 		ret = nw < 0 ? -1 : run_one(w, nw, outfile, environ);
-		gettimeofday(&t1, NULL);
+		clock_gettime(CLOCK_MONOTONIC, &t1);
 		ms = (t1.tv_sec - t0.tv_sec) * 1000L
-		   + (t1.tv_usec - t0.tv_usec) / 1000L;
+		   + (t1.tv_nsec - t0.tv_nsec) / 1000000L;
 
 		snprintf(outpath, sizeof outpath, "%s/%s.out", subdir, binary);
 		snprintf(goodfile, sizeof goodfile, "%s.out.good", binary);

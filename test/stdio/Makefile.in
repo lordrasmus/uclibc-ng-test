@@ -3,8 +3,7 @@
 
 DODIFF_64bit := 1
 
-ifeq ($(UCLIBC_HAS_GLIBC_CUSTOM_STREAMS),)
-TESTS_DISABLED += tst-fmemopen
-endif
+# The suite never reads uClibc's .config, so this variable was always empty
+# and the test was disabled everywhere.  It asks features.h itself now.
 
 TESTS_DISABLED += printf_fp

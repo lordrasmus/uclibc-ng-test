@@ -63,9 +63,21 @@ gen:
 	-rm -f $(top_builddir)/test/uclibcng-testrunner.in
 	$(MAKE) run UCLIBCNG_GENERATE_TESTRUNNER=1
 
-compile: subdirs_compile
+# The runner itself, built for the target because it runs in the guest.  It
+# replaces uclibcng-testrunner{,_qemu,_color}.sh, which differed only in -r and
+# -c; see the comment at the top of the source.  Built with the same CC and
+# flags as the tests, so it links against the uClibc-ng under test -- the same
+# exposure busybox already has in that rootfs.
+#
+# "make install" tars test/ excluding *.[ochmd], so this binary is carried into
+# the rootfs and its source is not.
+uclibcng-testrunner: uclibcng-testrunner.c
+	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -o $@ $< $(LDFLAGS) $(EXTRA_LDFLAGS)
+
+compile: uclibcng-testrunner subdirs_compile
 
 clean: subdirs_clean
+	-rm -f $(top_builddir)/test/uclibcng-testrunner
 
 subdirs: $(patsubst %, _dir_%, $(DIRS))
 subdirs_compile: $(patsubst %, _dircompile_%, $(DIRS))

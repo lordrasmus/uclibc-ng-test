@@ -3,14 +3,9 @@
 
 TESTS_DISABLED :=
 
-ifeq ($(TARGET_ARCH),arm)
-ifneq ($(MALLOC_STANDARD),y)
-TESTS_DISABLED += malloc tst-calloc
-endif
-endif
+# malloc, tst-calloc and tst-asprintf ask features.h themselves; the arm-only
+# restriction on the first two is kept there.  The suite never reads uClibc's
+# .config, so MALLOC_STANDARD was always empty and tst-asprintf was disabled on
+# every target while the other two were disabled on arm.
 
 TESTS_DISABLED += time_malloc
-
-ifneq ($(MALLOC_STANDARD),y)
-TESTS_DISABLED += tst-asprintf
-endif

@@ -7,9 +7,12 @@ DODIFF_teston_exit := 1
 DODIFF_teststrtol  := 1
 
 TESTS_DISABLED :=
-ifeq ($(UCLIBC_HAS_PTY),)
-TESTS_DISABLED += ptytest
-endif
+# ptytest.c asks features.h itself.  The suite never reads uClibc's .config, so
+# this variable was always empty and the test was disabled on every target.
+#
+# testarc4random below keeps its gate on purpose: arc4random() exists in
+# neither the headers nor the library, so the test cannot be built at all and
+# converting the gate would only turn a skip into a link error.
 ifeq ($(UCLIBC_HAS_ARC4RANDOM),)
 TESTS_DISABLED += testarc4random
 endif

@@ -1,3 +1,4 @@
+#include <features.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,6 +14,12 @@ static void my_stats(void)
 int main(int argc, char *argv[])
 {
 	char *a, *b;
+
+#if defined __UCLIBC__ && !defined __MALLOC_STANDARD__
+	/* Nothing here needs a header the option removes, so a runtime skip is
+	   enough. */
+	return 23;			/* SKIP */
+#endif
 
 	my_stats();
 	asprintf(&b, "asdsadasd %ssdf\n", "AAAA");

@@ -59,9 +59,18 @@ test check all: run
 
 run: subdirs_run
 
+# A parallel make appends the runner's lines in whatever order the subdirs
+# happen to finish, so the guest ran the suite in a different order every time
+# -- which makes a run that dies partway impossible to compare with the one
+# before it.  Sorting by subdir and then test name is stable across machines
+# and jobserver settings, and groups the log the way it reads best.
+# Fields are: expected_ret src binary subdir cmd.
 gen:
 	-rm -f $(top_builddir)/test/uclibcng-testrunner.in
 	$(MAKE) run UCLIBCNG_GENERATE_TESTRUNNER=1
+	LC_ALL=C sort -k4,4 -k3,3 \
+		-o $(top_builddir)/test/uclibcng-testrunner.in \
+		$(top_builddir)/test/uclibcng-testrunner.in
 
 # The runner itself, built for the target because it runs in the guest.  It
 # replaces uclibcng-testrunner{,_qemu,_color}.sh, which differed only in -r and

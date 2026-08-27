@@ -1,7 +1,29 @@
 # uClibc-ng time tests
 # Licensed under the LGPL v2.1, see the file COPYING.LIB in this tarball.
 
-TESTS_DISABLED := bug-asctime bug-asctime_r time tst-mktime2 tst-posixtz \
+# The block below was one list with no reason given for any entry, so nobody
+# could tell a deliberate deviation from a bug.  Measured on i686 and x86_64,
+# one reason each:
+#
+# bug-asctime, bug-asctime_r  glibc's asctime fails with EOVERFLOW for a year
+#	that does not fit; uClibc-ng renders "????" and returns the buffer.
+#	That choice is stated at the top of both test files and in
+#	libc/misc/time/time.c (SAFE_ASCTIME_R).  musl is harsher still and
+#	calls a_crash() there, so uClibc-ng's is the mildest of the three and
+#	worth keeping.  The other half of bug-asctime_r -- that byte 27 of the
+#	buffer stays untouched -- does pass, so the safe path is sound.
+# time	prints its results and asserts nothing; a wrong time() would keep it
+#	green.  Rewrite it or leave it out, but do not count it as coverage.
+# tst-strftime  tests GNU extensions uClibc-ng does not implement: the "-"
+#	flag (%-e, %-k, %-l) and a field width (%2000Y).
+# tst-strptime  tests the three deviations documented in the notes above
+#	strptime() in libc/misc/time/time.c: no fields without separators
+#	(%Y%m%d%H%M%S), no derived tm_wday/tm_yday, and %U/%W parsed but not
+#	used.  It also wants a ja_JP.EUC-JP locale.
+# tst-timezone  needs named zones (Europe/Amsterdam -> CET/CEST).  uClibc-ng
+#	reads POSIX TZ strings from TZ or /etc/TZ and has no zoneinfo reader,
+#	so this one cannot pass by design.  tst-posixtz covers what it can.
+TESTS_DISABLED := bug-asctime bug-asctime_r time \
 	tst-strftime tst-strptime tst-timezone
 
 ifeq ($(TARGET_ARCH),avr32)

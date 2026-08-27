@@ -14,6 +14,19 @@
 #define HAVE_FWIDE 1
 #endif
 
+#if defined __UCLIBC__ && !defined __UCLIBC_HAS_GLIBC_CUSTOM_STREAMS__
+
+/* fmemopen() and open_memstream() are that option, and without it stdio.h does
+   not even declare them -- so the whole body has to go behind the guard.  A
+   runtime SKIP does not help: the file still has to compile. */
+static int
+do_test (void)
+{
+    return 23;			/* SKIP */
+}
+
+#else
+
 static char *text_input = "1 23 43";
 
 static const char *good_answer = "1 529 1849 ";
@@ -375,11 +388,6 @@ after_close (void)
 static int
 do_test (void)
 {
-#if defined __UCLIBC__ && !defined __UCLIBC_HAS_GLIBC_CUSTOM_STREAMS__
-    /* fmemopen and open_memstream are that option. */
-    return 23;			/* SKIP */
-#endif
-
     if (round_trip() != 0)
         return 1;
 
@@ -396,6 +404,8 @@ do_test (void)
                errors, errors == 1 ? "" : "s");
     return errors != 0;
 }
+
+#endif /* __UCLIBC_HAS_GLIBC_CUSTOM_STREAMS__ */
 
 #define TEST_FUNCTION do_test ()
 #include "../test-skeleton.c"

@@ -24,6 +24,8 @@ main (int argc, char *argv[])
   int retval = 0;
   int fd;
   struct stat st;
+  struct timespec ts_init, ts_final;
+  int clock_moved = 0;
 
   if (sizeof(time_t) == 8) {
 
@@ -34,7 +36,9 @@ main (int argc, char *argv[])
       .tv_nsec = 0
     };
 
+    assert(clock_gettime (CLOCK_REALTIME, &ts_init) == 0);
     assert(clock_settime (CLOCK_REALTIME, &y2090_ts) == 0);
+    clock_moved = 1;
 
     /* hack to get a tempfile name w/out using tmpname()
      * as that func causes a link time warning */
@@ -60,6 +64,14 @@ main (int argc, char *argv[])
     retval = 0;
 
 the_end:
+    /* Put the clock back.  Every test that runs after this one in the same
+       boot saw the year 2090 otherwise, and the ones that measure a duration
+       reported nonsense -- the runner timed this test at 48 hours. */
+    if (clock_moved && clock_gettime (CLOCK_REALTIME, &ts_final) == 0) {
+      ts_init.tv_sec += ts_final.tv_sec - y2090_ts.tv_sec;
+      ts_init.tv_nsec = ts_final.tv_nsec;
+      clock_settime (CLOCK_REALTIME, &ts_init);
+    }
     unlink (name);
 
     return retval;

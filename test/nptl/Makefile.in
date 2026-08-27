@@ -4,6 +4,10 @@
 # build every test additionally at -O2 (see Test.mak)
 O2_TWINS := 1
 
+# These three are a pthread_create and then a wait for the alarm that ends
+# them; there is no code for -O2 to compile differently.
+TESTS_NO_O2 := tst-exit2 tst-exit3 tst-stdio1
+
 # tst-tls4 with its two modules, and tst-tls5 with its seven, ask for these
 # macros and are the only files here that do.  They were defined in
 # test/tls/Makefile.in only, so both tests compiled to an empty body and

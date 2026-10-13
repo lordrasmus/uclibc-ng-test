@@ -83,6 +83,20 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
+    /* And the permission bits.  shm_perm.mode sits where the kernel keeps a
+       32-bit field on every architecture whose kernel uses asm-generic's
+       ipcbuf.h, while a libc that declares it 16 bit wide reads one half of
+       it.  Which half depends on the byte order, so on a little-endian target
+       the value is right by accident and on a big-endian one it is always 0.
+       Nothing else in the structure moves, which is why this slipped through:
+       the test printed the mode and never looked at it.  */
+    if ((buf.shm_perm.mode & 0777) != 0666) {
+        printf("\nshm_perm.mode is %o, expected 666 from shmget\n",
+               buf.shm_perm.mode & 0777);
+        shmctl(shmid, IPC_RMID, NULL);
+        exit(EXIT_FAILURE);
+    }
+
     /* Attach it: shm_nattch, shm_atime and shm_dtime only ever get set by
        shmat/shmdt, and no test in this suite attached a segment at all -- which
        is how a shmat() returning EFAULT stayed unnoticed.
@@ -138,6 +152,21 @@ int main() {
 
     if ((buf.shm_ctime - ref > 60) || (ref - buf.shm_ctime > 60)) {
         printf("\nShmctl get a error time! \n");
+        exit(EXIT_FAILURE);
+    }
+
+    /* Read it back.  IPC_SET is the other direction through the same field:
+       where the two sides disagree the kernel takes the mode from the padding
+       and the segment silently keeps the permissions it had.  */
+    if (shmctl(shmid, IPC_STAT, &buf) == -1) {
+        perror("shmctl IPC_STAT after IPC_SET");
+        shmctl(shmid, IPC_RMID, NULL);
+        exit(EXIT_FAILURE);
+    }
+    if ((buf.shm_perm.mode & 0777) != 0600) {
+        printf("\nshm_perm.mode is %o after setting it to 600\n",
+               buf.shm_perm.mode & 0777);
+        shmctl(shmid, IPC_RMID, NULL);
         exit(EXIT_FAILURE);
     }
 

@@ -46,50 +46,78 @@ cmp (const char *what, long long want, long long got)
     }
 }
 
-/* Returns 0 when the size could be measured, 1 when the environment refused
-   it -- a file system that will not hold the file says nothing about libc.  */
+/* ftruncate() failing proves nothing on its own: the library may be unable to
+   express the size, or the file system may be unwilling to hold it, and both
+   report EFBIG.  Ask a second way -- seek to the last byte and write it.  A
+   seek that lands somewhere else is the library's fault and is reported as
+   such; only a write the file system turns down means the environment cannot
+   do this.  Returns 0 if the file now has the size, 1 if it cannot have it.  */
 static int
+make_size (int fd, long long want)
+{
+  off_t pos;
+  int e;
+
+  if (ftruncate (fd, (off_t) want) == 0)
+    return 0;
+  e = errno;
+
+  pos = lseek (fd, (off_t) (want - 1), SEEK_SET);
+  if (pos != (off_t) (want - 1))
+    {
+      printf ("  ftruncate: %s, and lseek to %lld answered %lld\n",
+	      strerror (e), want - 1, (long long) pos);
+      failed = 1;
+      return 1;
+    }
+
+  if (write (fd, "", 1) != 1)
+    {
+      printf ("  skipped: ftruncate said %s, writing the last byte said %s\n",
+	      strerror (e), strerror (errno));
+      return 1;
+    }
+
+  printf ("  ftruncate said %s although the file system holds the size\n",
+	  strerror (e));
+  failed = 1;
+  return 0;
+}
+
+static void
 one_size (long long want)
 {
   struct stat s;
   struct stat64 s64;
   struct rlimit rl;
-  int fd, e;
+  int fd;
+
+  printf ("%lld\n", want);
 
   if (getrlimit (RLIMIT_FSIZE, &rl) == 0
       && rl.rlim_cur != RLIM_INFINITY && (long long) rl.rlim_cur < want)
     {
-      printf ("%-12lld skipped, RLIMIT_FSIZE is %lld\n",
-	      want, (long long) rl.rlim_cur);
-      return 1;
+      printf ("  skipped: RLIMIT_FSIZE is %lld\n", (long long) rl.rlim_cur);
+      return;
     }
 
   fd = open (NAME, O_RDWR | O_CREAT | O_TRUNC, 0600);
   if (fd < 0)
     {
-      perror ("open");
+      perror ("  open");
       failed = 1;
-      return 1;
+      return;
     }
 
-  /* Sparse on purpose: nothing is written, so this costs an inode and not
-     eight gigabytes of a RAM-backed root file system.  */
-  if (ftruncate (fd, (off_t) want) < 0)
+  /* Sparse on purpose: at most one byte is written, so this costs an inode
+     and not eight gigabytes of a RAM-backed root file system.  */
+  if (make_size (fd, want) != 0)
     {
-      e = errno;
       close (fd);
       unlink (NAME);
-      if (e == EFBIG || e == ENOSPC || e == EINVAL || e == EPERM)
-	{
-	  printf ("%-12lld skipped, ftruncate: %s\n", want, strerror (e));
-	  return 1;
-	}
-      printf ("%-12lld ftruncate: %s\n", want, strerror (e));
-      failed = 1;
-      return 1;
+      return;
     }
 
-  printf ("%-12lld\n", want);
   measured = 1;
 
   /* lseek reaches the kernel's idea of the size without going through
@@ -135,7 +163,6 @@ one_size (long long want)
 
   close (fd);
   unlink (NAME);
-  return 0;
 }
 
 int
@@ -157,10 +184,12 @@ main (void)
   for (i = 0; i < sizeof sizes / sizeof sizes[0]; i++)
     one_size (sizes[i]);
 
+  if (failed)
+    return 1;
   if (!measured)
     {
       puts ("no size could be created here");
       return 23;		/* SKIP */
     }
-  return failed;
+  return 0;
 }

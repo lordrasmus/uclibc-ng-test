@@ -179,11 +179,37 @@ int main() {
       exit(EXIT_FAILURE);
   }
 
-  // Change permissions
-  buf.msg_perm.mode = 0600;  // New permissions
+  /* msgget() was given 0644 and no umask applies to SysV IPC, so this is
+     exactly what has to come back.  */
+  if ((buf.msg_perm.mode & 0777) != 0644) {
+      printf("\nmsg_perm.mode is %o, expected 644 from msgget\n",
+             buf.msg_perm.mode & 0777);
+      msgctl(msqid, IPC_RMID, NULL);
+      exit(EXIT_FAILURE);
+  }
+
+  /* Three values that cannot arise by accident: not zero, not what the
+     fields held before, and different from each other.  */
+  buf.msg_perm.uid  = 1234;
+  buf.msg_perm.gid  = 5678;
+  buf.msg_perm.mode = 0642;
 
   if (msgctl(msqid, IPC_SET, &buf) == -1) {
       perror("msgctl IPC_SET failed");
+      msgctl(msqid, IPC_RMID, NULL);
+      exit(EXIT_FAILURE);
+  }
+
+  if (msgctl(msqid, IPC_STAT, &buf) == -1) {
+      perror("msgctl IPC_STAT after IPC_SET failed");
+      msgctl(msqid, IPC_RMID, NULL);
+      exit(EXIT_FAILURE);
+  }
+  if ((buf.msg_perm.mode & 0777) != 0642
+      || buf.msg_perm.uid != 1234 || buf.msg_perm.gid != 5678) {
+      printf("\nafter IPC_SET: uid %d gid %d mode %o, expected 1234 5678 642\n",
+             (int) buf.msg_perm.uid, (int) buf.msg_perm.gid,
+             buf.msg_perm.mode & 0777);
       msgctl(msqid, IPC_RMID, NULL);
       exit(EXIT_FAILURE);
   }

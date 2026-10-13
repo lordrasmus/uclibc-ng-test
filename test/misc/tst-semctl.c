@@ -217,6 +217,15 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
+    /* semget() was given 0666 and no umask applies to SysV IPC, so this is
+       exactly what has to come back.  */
+    if ((ds.sem_perm.mode & 0777) != 0666) {
+        printf("sem_perm.mode is %o, expected 666 from semget\n",
+               ds.sem_perm.mode & 0777);
+        semctl(semid, 0, IPC_RMID);
+        exit(EXIT_FAILURE);
+    }
+
 
     /* One semop, so that sem_otime is set at all -- it printed the epoch in
        every run so far because nothing in this suite ever operated on a
@@ -239,11 +248,28 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    // Change permissions
-    ds.sem_perm.mode = 0600;  // Change to new permissions
+    /* Three values that cannot arise by accident: not zero, not what the
+       fields held before, and different from each other.  */
+    ds.sem_perm.uid  = 1234;
+    ds.sem_perm.gid  = 5678;
+    ds.sem_perm.mode = 0642;
 
     if (semctl(semid, 0, IPC_SET, arg) == -1) {
         perror("semctl IPC_SET failed");
+        semctl(semid, 0, IPC_RMID);
+        exit(EXIT_FAILURE);
+    }
+
+    if (semctl(semid, 0, IPC_STAT, arg) == -1) {
+        perror("semctl IPC_STAT after IPC_SET failed");
+        semctl(semid, 0, IPC_RMID);
+        exit(EXIT_FAILURE);
+    }
+    if ((ds.sem_perm.mode & 0777) != 0642
+        || ds.sem_perm.uid != 1234 || ds.sem_perm.gid != 5678) {
+        printf("\nafter IPC_SET: uid %d gid %d mode %o, expected 1234 5678 642\n",
+               (int) ds.sem_perm.uid, (int) ds.sem_perm.gid,
+               ds.sem_perm.mode & 0777);
         semctl(semid, 0, IPC_RMID);
         exit(EXIT_FAILURE);
     }

@@ -141,8 +141,14 @@ int main() {
     }
 #endif /* __ARCH_USE_MMU__ */
 
-    // Change to new permissions
-    buf.shm_perm.mode = 0600;
+    /* Hand back three values that cannot arise by accident: not zero, not
+       what the field held before, and different from each other.  A field
+       read at the wrong offset or half a field read at the right one then
+       cannot answer correctly.  (The same reason the semctl canary carries a
+       position dependent pattern instead of a constant fill.)  */
+    buf.shm_perm.uid  = 1234;
+    buf.shm_perm.gid  = 5678;
+    buf.shm_perm.mode = 0642;
     
     if (shmctl(shmid, IPC_SET, &buf) == -1) {
         perror("shmctl IPC_SET failed");
@@ -163,8 +169,10 @@ int main() {
         shmctl(shmid, IPC_RMID, NULL);
         exit(EXIT_FAILURE);
     }
-    if ((buf.shm_perm.mode & 0777) != 0600) {
-        printf("\nshm_perm.mode is %o after setting it to 600\n",
+    if ((buf.shm_perm.mode & 0777) != 0642
+        || buf.shm_perm.uid != 1234 || buf.shm_perm.gid != 5678) {
+        printf("\nafter IPC_SET: uid %d gid %d mode %o, expected 1234 5678 642\n",
+               (int) buf.shm_perm.uid, (int) buf.shm_perm.gid,
                buf.shm_perm.mode & 0777);
         shmctl(shmid, IPC_RMID, NULL);
         exit(EXIT_FAILURE);

@@ -58,6 +58,25 @@ make_size (int fd, long long want)
   off_t pos;
   int e;
 
+  /* One byte first, and not for the data.  A kernel without an MMU reads a
+     truncate of an EMPTY file as "this is about to be mapped shared", and a
+     shared mapping there has to be one physically contiguous block, so it
+     allocates the whole file up front and turns down anything past
+     MAX_ORDER pages -- 4 MB -- with EFBIG (fs/ramfs/file-nommu.c,
+     ramfs_nommu_resize).  Once the file holds something, that guess no longer
+     applies and the plain truncate_setsize() path runs, which only moves
+     i_size.  Measured on riscv32 without an MMU: empty to 8 GB is EFBIG, one
+     byte to 8 GB works.
+
+     A library that cannot express the size still fails here, because it fails
+     before the kernel is asked at all.  */
+  if (write (fd, "", 1) != 1)
+    {
+      perror ("  write");
+      failed = 1;
+      return 1;
+    }
+
   if (ftruncate (fd, (off_t) want) == 0)
     return 0;
   e = errno;
@@ -109,7 +128,7 @@ one_size (long long want)
       return;
     }
 
-  /* Sparse on purpose: at most one byte is written, so this costs an inode
+  /* Sparse on purpose: at most two bytes are written, so this costs an inode
      and not eight gigabytes of a RAM-backed root file system.  */
   if (make_size (fd, want) != 0)
     {

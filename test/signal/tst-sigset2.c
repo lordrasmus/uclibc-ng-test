@@ -184,6 +184,18 @@ returnTest3 (void)
 static int
 run_child (int (*test) (void))
 {
+#ifndef __ARCH_USE_MMU__
+  /* No fork.  The tests raise no signal, so resetting the disposition
+     and the mask gives each one the state a fresh child would have.  */
+  if (signal (TEST_SIG, SIG_DFL) == SIG_ERR)
+    die ("signal");
+  sigset_t s;
+  sigemptyset (&s);
+  sigaddset (&s, TEST_SIG);
+  if (sigprocmask (SIG_UNBLOCK, &s, NULL) == -1)
+    die ("sigprocmask");
+  return test ();
+#else
   pid_t childPid = fork ();
   if (childPid == -1)
     die ("fork");
@@ -195,6 +207,7 @@ run_child (int (*test) (void))
   if (TEMP_FAILURE_RETRY (waitpid (childPid, &status, 0)) != childPid)
     die ("waitpid");
   return !WIFEXITED (status) || WEXITSTATUS (status) != 0;
+#endif
 }
 
 int

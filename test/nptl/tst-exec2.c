@@ -57,9 +57,9 @@ do_test (void)
     }
 
   /* Not interested in knowing when the pipe is closed.  */
-  if (sigignore (SIGPIPE) != 0)
+  if (signal (SIGPIPE, SIG_IGN) == SIG_ERR)
     {
-      puts ("sigignore failed");
+      puts ("signal failed");
       exit (1);
     }
 

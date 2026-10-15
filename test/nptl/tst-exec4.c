@@ -28,9 +28,9 @@ static void *
 tf (void *arg)
 {
   /* Ignore SIGUSR1 and block SIGUSR2.  */
-  if (sigignore (SIGUSR1) != 0)
+  if (signal (SIGUSR1, SIG_IGN) == SIG_ERR)
     {
-      puts ("sigignore failed");
+      puts ("signal failed");
       exit (1);
     }
 

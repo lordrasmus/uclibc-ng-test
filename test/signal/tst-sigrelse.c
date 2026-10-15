@@ -33,11 +33,7 @@ static int result;
       }									\
   while (0)
 
-static void
-handler (int sig)
-{
-  caught++;
-}
+static volatile sig_atomic_t blocked_in_handler;
 
 static int
 blocked (int sig)
@@ -45,6 +41,13 @@ blocked (int sig)
   sigset_t s;
   sigprocmask (SIG_BLOCK, NULL, &s);
   return sigismember (&s, sig);
+}
+
+static void
+handler (int sig)
+{
+  caught++;
+  blocked_in_handler = blocked (sig);
 }
 
 static int
@@ -86,12 +89,35 @@ main (void)
 
   /* sigset (SIG_HOLD) blocks; sigset with a handler unblocks again,
      reports SIG_HOLD as the previous disposition and delivers.  */
-  CHECK (sigset (SIGUSR1, SIG_HOLD) != SIG_ERR);
+  CHECK (sigset (SIGUSR1, SIG_HOLD) == handler);
   CHECK (blocked (SIGUSR1));
   CHECK (raise (SIGUSR1) == 0);
   CHECK (caught == 1);
+  blocked_in_handler = 0;
   CHECK (sigset (SIGUSR1, handler) == SIG_HOLD);
   CHECK (!blocked (SIGUSR1));
+  CHECK (caught == 2);
+
+  /* That handler ran with its signal blocked, and it is free again.  */
+  CHECK (blocked_in_handler);
+  CHECK (!blocked (SIGUSR1));
+
+  /* sigset with SIG_IGN and SIG_DFL takes effect.  */
+  CHECK (sigset (SIGUSR1, SIG_IGN) == handler);
+  CHECK (sigaction (SIGUSR1, NULL, &sa) == 0 && sa.sa_handler == SIG_IGN);
+  CHECK (raise (SIGUSR1) == 0);
+  CHECK (caught == 2);
+  CHECK (sigset (SIGUSR1, SIG_DFL) == SIG_IGN);
+  CHECK (sigaction (SIGUSR1, NULL, &sa) == 0 && sa.sa_handler == SIG_DFL);
+
+  /* sigignore throws away a signal that is already pending.  */
+  CHECK (sigset (SIGHUP, handler) != SIG_ERR);
+  CHECK (sighold (SIGHUP) == 0);
+  CHECK (raise (SIGHUP) == 0);
+  CHECK (pending (SIGHUP));
+  CHECK (sigignore (SIGHUP) == 0);
+  CHECK (!pending (SIGHUP));
+  CHECK (sigrelse (SIGHUP) == 0);
   CHECK (caught == 2);
 
   /* SIGKILL can be neither ignored nor caught.  */

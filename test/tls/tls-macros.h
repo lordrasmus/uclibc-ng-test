@@ -60,6 +60,10 @@
 #include <tls-macros-microblaze.h>
 #endif
 
+#ifdef __loongarch__
+#include <tls-macros-loongarch.h>
+#endif
+
 #ifdef __mips__
 #include <tls-macros-mips.h>
 #endif

@@ -17,6 +17,9 @@ TESTS := tst_iswalnum tst_iswalpha tst_iswcntrl          \
 	 tst_wctype tst_wcwidth tst_strfmon \
 	 tst2_mbrtowc
 
+# From libc-test, see ../libc-test.h.
+TESTS += clocale_mbfuncs mbc wcstol fwscanf
+
 # NOTE: For now disabled tst_strfmon to avoid build failure.
 TESTS_DISABLED := tst_strfmon
 

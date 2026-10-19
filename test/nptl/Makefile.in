@@ -87,6 +87,10 @@ TESTS += tst-clock tst-clock_nanosleep tst-cpuclock1 tst-cpuclock2	\
 	tst-mqueue7 tst-mqueue8 tst-mqueue9 tst-timer2 tst-timer3	\
 	tst-timer4 tst-timer5
 
+# From libc-test, see ../libc-test.h.
+TESTS += tls_local_exec pthread_cancel-points pthread_cancel-sem_wait \
+	pthread_atfork-errno-clobber
+
 # A libc without shared support cannot link the modules these tests load,
 # and -pie has no loader to relocate it.  NO_DL marks such a build.
 ifeq ($(NO_DL),1)
@@ -135,6 +139,7 @@ LDFLAGS_tst-fini1mod.so = -Wl,-soname=tst-fini1mod.so
 LDFLAGS_tst-unload = -ldl
 LDFLAGS_tst-cancel5 := -lpthread
 LDFLAGS_tst-cancel18 := -lrt
+LDFLAGS_pthread_cancel-points := -lrt
 LDFLAGS_tst-cancelx18 := -lrt
 LDFLAGS_tst-cancel23 := -lc -lpthread
 LDFLAGS_tst-vfork1x := -lc -lpthread

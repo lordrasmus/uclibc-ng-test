@@ -19,5 +19,9 @@
 
 #define PREAD pread64
 #define PWRITE pwrite64
+#define IO_OFFSET off64_t
+#define IO_STAT struct stat64
+#define IO_FSTAT fstat64
+#define IO_MKSTEMP mkstemp64
 
 #include "tst-preadwrite.c"

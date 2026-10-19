@@ -41,12 +41,6 @@
 
 #ifdef __ARCH_USE_MMU__
 
-#if defined(__GLIBC__) || defined(__UCLIBC__)
-#define SIGCANCEL   __SIGRTMIN
-#else
-#define SIGCANCEL   SIGRTMIN
-#endif
-
 
 /* Since STREAMS are not supported in the standard Linux kernel and
    there we don't advertise STREAMS as supported is no need to test
@@ -789,7 +783,9 @@ tf_sigpause (void *arg)
 
   pthread_cleanup_push (cl, NULL);
 
-  sigpause (SIGCANCEL);
+  /* Not SIGCANCEL: like glibc, the library refuses its own signals in
+     sigdelset, so sigpause would return at once.  */
+  sigpause (SIGINT);
 
   pthread_cleanup_pop (0);
 

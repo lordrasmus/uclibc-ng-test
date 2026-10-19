@@ -32,6 +32,20 @@ do_test (void)
 
   for (sig = 1; sig <= max_sig; ++sig)
     {
+#if defined __SIGRTMIN && defined SIGRTMIN
+      /* The real-time signals below SIGRTMIN are the library's own.  Like
+	 glibc and musl, sigaddset and sigdelset must refuse them, or an
+	 application could block the signal pthread_cancel relies on.  */
+      if (sig >= __SIGRTMIN && sig < SIGRTMIN)
+	{
+	  errno = 0;
+	  TRY (sigaddset (&set, sig) != -1 || errno != EINVAL);
+	  errno = 0;
+	  TRY (sigdelset (&set, sig) != -1 || errno != EINVAL);
+	  TRY (sigismember (&set, sig) != 0);
+	  continue;
+	}
+#endif
       TRY (sigismember (&set, sig) != 0);
       TRY (sigaddset (&set, sig) != 0);
       TRY (sigismember (&set, sig) == 0);

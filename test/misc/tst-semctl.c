@@ -1,3 +1,6 @@
+#ifndef _GNU_SOURCE
+# define _GNU_SOURCE
+#endif
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -106,11 +109,18 @@ static int check_other_cmds(void)
 
     /* GETVAL is not caught by the faulty command test, so it must agree. */
     for (i = 0; i < NSEMS; i++) {
-        ret = semctl(semid, i, GETVAL, arg);
+        ret = semctl(semid, i, GETVAL);
         if (ret != i + 1) {
             printf("GETVAL: semaphore %d is %d, expected %d\n", i, ret, i + 1);
             bad = 1;
         }
+    }
+
+    arg.val = 123;
+    if (semctl(semid, 0, SETVAL, arg) == -1
+        || semctl(semid, 0, GETVAL) != 123) {
+        printf("SETVAL/GETVAL did not preserve 123\n");
+        bad = 1;
     }
 
     if (semop(semid, &op, 1) == -1) {
@@ -137,6 +147,14 @@ static int check_other_cmds(void)
         }
         if (noarg_cmds[i] == GETNCNT && ret != 0) {
             printf("GETNCNT returned %d, expected 0\n", ret);
+            bad = 1;
+        }
+        /* The canary above checks unwanted writes.  This call also checks
+           that an omitted fourth argument is never fetched. */
+        ret = semctl(semid, 0, noarg_cmds[i]);
+        if (ret != (noarg_cmds[i] == GETPID ? (int) getpid() : 0)) {
+            printf("semctl %s with three arguments returned %d\n",
+                   noarg_names[i], ret);
             bad = 1;
         }
     }

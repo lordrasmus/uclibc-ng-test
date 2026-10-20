@@ -1,5 +1,6 @@
 /* From libc-test (MIT, see ../libc-test.h), src/regression/pthread_atfork-errno-clobber.c at 7b95dfa.
-   Changed: drops root first, so that RLIMIT_NPROC makes fork fail. */
+   Changed: drops root first, so that RLIMIT_NPROC makes fork fail; skipped
+   without an MMU, where there is no fork(). */
 #include <errno.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -8,6 +9,14 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include "../libc-test.h"
+
+#ifndef __ARCH_USE_MMU__
+int main(void)
+{
+	puts("SKIP: no fork() without an MMU");
+	return 0;
+}
+#else
 
 #define TEST(c, ...) ((c) ? 1 : (t_error(#c" failed: " __VA_ARGS__),0))
 
@@ -34,4 +43,4 @@ int main(void)
 
 	return t_status;
 }
-
+#endif

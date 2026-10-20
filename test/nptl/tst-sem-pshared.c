@@ -21,6 +21,15 @@
 #include <time.h>
 #include <unistd.h>
 
+#ifndef __ARCH_USE_MMU__
+int
+main (void)
+{
+  puts ("SKIP: needs fork(), which a target without an MMU does not have");
+  return 0;
+}
+#else
+
 #define ROUNDS 3
 #define ITER 10000
 #define NPROC 4
@@ -123,3 +132,4 @@ main (void)
     }
   return bad;
 }
+#endif

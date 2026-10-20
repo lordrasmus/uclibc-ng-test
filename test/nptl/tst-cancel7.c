@@ -32,11 +32,16 @@ char pidfilename[] = "/tmp/tst-cancel7-XXXXXX";
 static void *
 tf (void *arg)
 {
+  /* "exec": the process system() starts has to be the one that takes
+     the lock.  ash and bash exec the last command of "sh -c" on their
+     own, busybox hush (sh on noMMU) forks it, and then cancelling
+     system() kills only the shell. */
+  const char *pre = "exec ";
   const char *args = " -d -p ";
-  char *cmd = alloca (strlen (command) + strlen (args)
+  char *cmd = alloca (strlen (pre) + strlen (command) + strlen (args)
 		      + strlen (pidfilename) + 1);
 
-  strcpy (stpcpy (stpcpy (cmd, command), args), pidfilename);
+  strcpy (stpcpy (stpcpy (stpcpy (cmd, pre), command), args), pidfilename);
   system (cmd);
   /* This call should never return.  */
   return NULL;

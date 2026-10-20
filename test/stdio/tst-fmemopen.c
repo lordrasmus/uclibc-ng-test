@@ -257,8 +257,10 @@ seek_past_end (void)
 }
 
 /* The mandated half of the size rule: with the position moved back, the size
-   is the position and not the length.  glibc leaves the old byte where the
-   null belongs here, so this is the one place the two disagree.  */
+   is the position and not the length.  The null stays at the end of the
+   length: it is appended only "If a write moves the position to a value larger
+   than the current length", and nothing allows a seek or a flush to touch the
+   data behind the position.  */
 static void
 seek_back (void)
 {
@@ -276,25 +278,24 @@ seek_back (void)
     fseek(f, 2, SEEK_SET);
     if (fflush(f) == 0) {
         check_size("position moved back", size, 2);
-        check_term("position moved back", ptr, size);
-        check_bytes("position moved back", ptr, "ab", 2);
+        check_term("position moved back", ptr, 6);
+        check_bytes("position moved back", ptr, "abcdef", 6);
     } else
         fail("fflush after seeking back failed");
 
     fputc('Z', f);
     if (fflush(f) == 0) {
         check_size("overwrite after seeking back", size, 3);
-        check_term("overwrite after seeking back", ptr, size);
-        check_bytes("overwrite after seeking back", ptr, "abZ", 3);
+        check_term("overwrite after seeking back", ptr, 6);
+        check_bytes("overwrite after seeking back", ptr, "abZdef", 6);
     } else
         fail("fflush after overwriting failed");
     fclose(f);
     free(ptr);
 }
 
-/* Back and forward again without writing.  The size is mandated; what the
-   bytes in between hold is not specified, so it is only reported -- an
-   implementation may keep the old data or may have put the terminator there.  */
+/* Back and forward again without writing: the size is the position, and the
+   data and the null at the end of the length are untouched.  */
 static void
 seek_back_then_forward (void)
 {
@@ -313,12 +314,8 @@ seek_back_then_forward (void)
     fseek(f, 5, SEEK_SET);
     if (fflush(f) == 0) {
         check_size("back then forward", size, 5);
-        check_term("back then forward", ptr, size);
-        check_bytes("back then forward", ptr, "ab", 2);
-        printf("info: after moving back over data and forward again, "
-               "bytes 2..4 are%s preserved\n",
-               memcmp(ptr + 2, "cde", 3) == 0 ? "" : " not");
-        dump("bytes 0..4:", ptr, 5);
+        check_term("back then forward", ptr, 6);
+        check_bytes("back then forward", ptr, "abcdef", 6);
     } else
         fail("fflush after seeking back and forward failed");
     fclose(f);

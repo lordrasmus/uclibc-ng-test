@@ -26,6 +26,10 @@
  * the parent's, so argv and envp are built before the vfork and the child does
  * nothing but syscalls.
  *
+ * Started as PID 1 it is the guest's init: it mounts what the tests need, runs
+ * the suite in the fixed format the CI parses (-r), prints the tests_start and
+ * tests_end markers and then starts a shell.  See the end of the file.
+ *
  * Copyright (c) 2015 Thorsten "mirabilos" Glaser <tg@mirbsd.org> for the shell
  * version this follows.
  *
@@ -49,6 +53,9 @@
 #include <sys/wait.h>
 #include <time.h>
 #include <sys/stat.h>
+#include <sys/mount.h>
+#include <sys/reboot.h>
+#include <sys/ioctl.h>
 
 #define MAXLINE   8192
 #define MAXWORDS  64
@@ -57,6 +64,7 @@
 
 static int opt_color;		/* -c: ANSI colours and a padded subdir column */
 static int opt_runlines;	/* -r: "RUN name" instead of the \r progress   */
+static int is_init;		/* running as PID 1, see init_setup()         */
 
 static int nfail, nskip, npass;
 
@@ -290,9 +298,15 @@ run_one(char **w, int nw, const char *outfile, char **environ_in)
 	}
 	if (pid < 0)
 		return -1;
-	while (waitpid(pid, &status, 0) < 0)
-		if (errno != EINTR)
+	/* As init, every orphan of a test is ours to reap; collect them along
+	   with the test so they do not pile up as zombies over the run. */
+	for (;;) {
+		pid_t got = waitpid(is_init ? -1 : pid, &status, 0);
+		if (got == pid)
+			break;
+		if (got < 0 && errno != EINTR)
 			return -1;
+	}
 	if (WIFSIGNALED(status))
 		return 128 + WTERMSIG(status);
 	return WEXITSTATUS(status);
@@ -301,8 +315,7 @@ run_one(char **w, int nw, const char *outfile, char **environ_in)
 /* --------------------------------------------------------------- .good file */
 
 /* Byte comparison; the scripts used diff -u and only looked at whether it
-   reported a difference.  There are five .good files in a whole rootfs, so the
-   external diff for the report costs nothing and keeps the output identical.
+   reported a difference.
 
    Only <binary_name>.out.good is consulted.  The script also named a second
    candidate, "$test_src_name.out", but the variable it read is tst_src_name --
@@ -332,58 +345,68 @@ same_file(const char *a, const char *b)
 	return eq;
 }
 
+/* The report for a failed comparison.  Not diff -u: that needed a shell, diff
+   and sed in the guest, for five .good files that are a few lines each.  The
+   lines are compared pairwise, so an inserted line shows as every line after it
+   differing -- the limit keeps that readable, and the first difference is the
+   one that matters. */
+#define MAXDIFF 20
+
 static void
 show_diff(const char *out, const char *good)
 {
-	char cmd[2 * MAXPATHL + 64];
+	char lo[MAXLINE], lg[MAXLINE];
+	FILE *fo = fopen(out, "r"), *fg = fopen(good, "r");
+	int n = 0, shown = 0;
 
-	/* only on the failure path, and only for the report */
-	snprintf(cmd, sizeof cmd, "diff -u '%s' '%s' | sed 's/^/       /'",
-		 out, good);
-	fflush(stdout);
-	/* the diff itself is the message; its exit status says only that the
-	   files differ, which is why we are here */
-	if (system(cmd) < 0)
-		fputs("       (diff unavailable)\n", stdout);
+	if (!fo || !fg) {
+		printf("       cannot open %s\n", fo ? good : out);
+		goto out;
+	}
+	printf("       --- expected %s\n       +++ got      %s\n", good, out);
+	for (;;) {
+		char *po = fgets(lo, sizeof lo, fo);
+		char *pg = fgets(lg, sizeof lg, fg);
+
+		if (!po && !pg)
+			break;
+		n++;
+		if (po && pg && strcmp(lo, lg) == 0)
+			continue;
+		if (++shown > MAXDIFF) {
+			puts("       ...");
+			break;
+		}
+		printf("       @ line %d\n", n);
+		if (pg)
+			printf("       -%.*s\n", (int) strcspn(lg, "\n"), lg);
+		if (po)
+			printf("       +%.*s\n", (int) strcspn(lo, "\n"), lo);
+	}
+out:
+	if (fo) fclose(fo);
+	if (fg) fclose(fg);
 }
 
 /* ------------------------------------------------------------------- main */
 
 extern char **environ;
 
-int
-main(int argc, char **argv)
+static int
+run_suite(const char *infile)
 {
-	const char *infile = "uclibcng-testrunner.in";
 	char line[MAXLINE], cwd[MAXPATHL], subcwd[MAXPATHL];
 	char wordbuf[MAXLINE * 2];	/* $PWD makes the result longer */
 	char *w[MAXWORDS];
 	FILE *in;
-	int i;
-
-	for (i = 1; i < argc; i++) {
-		if (strcmp(argv[i], "-c") == 0)
-			opt_color = 1;
-		else if (strcmp(argv[i], "-r") == 0)
-			opt_runlines = 1;
-		else if (strcmp(argv[i], "-f") == 0 && i + 1 < argc)
-			infile = argv[++i];
-		else {
-			fprintf(stderr, "usage: %s [-c] [-r] [-f file]\n"
-				"  -c  colour the result and pad the subdir column\n"
-				"  -r  print \"RUN name\" instead of overwriting progress\n",
-				argv[0]);
-			return 1;
-		}
-	}
 
 	if (!getcwd(cwd, sizeof cwd)) {
 		fprintf(stderr, "E: getcwd: %s\n", strerror(errno));
-		return 1;
+		return -1;
 	}
 	if ((in = fopen(infile, "r")) == NULL) {
 		fprintf(stderr, "E: %s not found\n", infile);
-		return 1;
+		return -1;
 	}
 
 	while (fgets(line, sizeof line, in)) {
@@ -438,7 +461,7 @@ main(int argc, char **argv)
 		snprintf(goodfile, sizeof goodfile, "%s.out.good", binary);
 
 		if (ret == 23) {
-			if (chdir(cwd) != 0) return 1;
+			if (chdir(cwd) != 0) return -1;
 			result("SKIP", "33", subdir, binary, "");
 			printf("TIME %s %ld\n", binary, ms);
 			nskip++;
@@ -449,7 +472,7 @@ main(int argc, char **argv)
 			char tail[64];
 			snprintf(tail, sizeof tail, " got %d expected %d",
 				 ret, expected);
-			if (chdir(cwd) != 0) return 1;
+			if (chdir(cwd) != 0) return -1;
 			result("FAIL", "31", subdir, binary, tail);
 			printf("TIME %s %ld\n", binary, ms);
 			nfail++;
@@ -463,7 +486,7 @@ main(int argc, char **argv)
 
 			snprintf(gpath, sizeof gpath, "%s/%s.out.good",
 				 subdir, binary);
-			if (chdir(cwd) != 0) return 1;
+			if (chdir(cwd) != 0) return -1;
 			if (ok) {
 				result("PASS", "32", subdir, binary, "");
 				printf("TIME %s %ld\n", binary, ms);
@@ -478,7 +501,7 @@ main(int argc, char **argv)
 			continue;
 		}
 
-		if (chdir(cwd) != 0) return 1;
+		if (chdir(cwd) != 0) return -1;
 		result("PASS", "32", subdir, binary, "");
 		printf("TIME %s %ld\n", binary, ms);
 		npass++;
@@ -495,5 +518,144 @@ main(int argc, char **argv)
 		printf("Total failed: %d\n", nfail);
 		printf("Total passed: %d\n", npass);
 	}
-	return nfail == 0 ? 0 : 1;
+	return nfail == 0 ? 0 : 1;	/* -1 above: the run did not finish */
+}
+
+/* ------------------------------------------------------------------- init */
+
+/* Booted as /init, the runner does what busybox init and run_tests.sh did
+   around it, so a test run execs nothing but the tests: on a noMMU target
+   each busybox exec is another 1.1 MB the allocator rounds up to 2 MB.
+   Busybox stays in the rootfs as /bin/sh for popen() and posix_spawn tests,
+   and as the shell after the run.  Every step may fail -- a kernel
+   without tmpfs, a rootfs that is ramfs -- and none of that stops the run. */
+
+#define TESTDIR "/usr/lib/uclibc-ng-test/test"
+
+static void
+write_file(const char *path, const char *s)
+{
+	int fd = open(path, O_WRONLY);
+
+	if (fd >= 0) {
+		ssize_t r = write(fd, s, strlen(s));
+		(void) r;
+		close(fd);
+	}
+}
+
+static void
+init_setup(void)
+{
+	int fd;
+
+	mount("devtmpfs", "/dev", "devtmpfs", 0, NULL);
+
+	/* The kernel opens /dev/console for init only if the initramfs has
+	   the node, and ours gets it from devtmpfs just now.  Opened here in
+	   any case, in a session of its own, so the tests have the console as
+	   controlling terminal the way busybox init gave it to run_tests.sh. */
+	setsid();
+	fd = open("/dev/console", O_RDWR);
+	if (fd >= 0) {
+		ioctl(fd, TIOCSCTTY, 0);
+		dup2(fd, 0);
+		dup2(fd, 1);
+		dup2(fd, 2);
+		if (fd > 2)
+			close(fd);
+	}
+
+	mount("proc", "/proc", "proc", 0, NULL);
+	mount("sysfs", "/sys", "sysfs", 0, NULL);
+	/* the initramfs has no fallocate, tst-fallocate needs a tmpfs */
+	mount("tmpfs", "/tmp", "tmpfs", 0, NULL);
+	/* shm_open() keeps its objects here, devtmpfs does not have it */
+	mkdir("/dev/shm", 01777);
+	mount("tmpfs", "/dev/shm", "tmpfs", 0, NULL);
+	/* the rootfs tmpfs defaults to half the RAM; on sh4 that left 1.3 MB
+	   for all .out files */
+	mount("rootfs", "/", NULL, MS_REMOUNT, "size=90%");
+
+	if (sethostname("Qemu", 4) != 0) {
+		/* cosmetic, the run does not need it */
+	}
+	/* register dump on fatal signals, and the console level to show it */
+	write_file("/proc/sys/kernel/print-fatal-signals", "1");
+	write_file("/proc/sys/kernel/printk", "8");
+
+	/* what busybox init exported */
+	setenv("HOME", "/", 1);
+	setenv("PATH", "/sbin:/usr/sbin:/bin:/usr/bin", 1);
+	setenv("SHELL", "/bin/sh", 1);
+	setenv("USER", "root", 1);
+}
+
+/* The markers uc_devel and the CI wait for; read_test_log.py matches them
+   literally. */
+static void
+banner(const char *text)
+{
+	printf("-------------------- %s %.*s\n", text,
+	       (int) (35 - strlen(text)), "-----------------------------------");
+}
+
+/* init must not exit, the kernel panics.  uc_devel and the CI stop qemu at
+   tests_end, so what follows is only for uc_devel -q --shell: a shell on the
+   console, no login.  Without one, switch off. */
+static void
+init_finish(void)
+{
+	char *argv[] = { "sh", NULL };
+
+	puts("\nshell on the console; rerun with ./uclibcng-testrunner -c,"
+	     " quit with reboot -f\n");
+	fflush(stdout);
+	sync();
+	execve("/bin/sh", argv, environ);
+	reboot(RB_POWER_OFF);
+	for (;;)
+		pause();
+}
+
+int
+main(int argc, char **argv)
+{
+	const char *infile = "uclibcng-testrunner.in";
+	int i;
+
+	is_init = getpid() == 1;
+
+	if (is_init) {
+		init_setup();
+		if (chdir(TESTDIR) != 0)
+			fprintf(stderr, "E: chdir %s: %s\n", TESTDIR,
+				strerror(errno));
+		/* a fixed run: the format the CI parses, "RUN name" lines
+		   and no colour; options are for starting it by hand */
+		opt_runlines = 1;
+		banner("tests_start");
+		/* no tests_end after a run that broke off, so the harness
+		   reports it as one instead of as an empty pass */
+		if (run_suite(infile) >= 0)
+			banner("tests_end");
+		init_finish();
+	}
+
+	for (i = 1; i < argc; i++) {
+		if (strcmp(argv[i], "-c") == 0)
+			opt_color = 1;
+		else if (strcmp(argv[i], "-r") == 0)
+			opt_runlines = 1;
+		else if (strcmp(argv[i], "-f") == 0 && i + 1 < argc)
+			infile = argv[++i];
+		else {
+			fprintf(stderr, "usage: %s [-c] [-r] [-f file]\n"
+				"  -c  colour the result and pad the subdir column\n"
+				"  -r  print \"RUN name\" instead of overwriting progress\n",
+				argv[0]);
+			return 1;
+		}
+	}
+	return run_suite(infile) == 0 ? 0 : 1;
 }

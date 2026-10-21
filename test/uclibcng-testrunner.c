@@ -1,11 +1,11 @@
 /* Testsuite runner.
  *
- * Replaces uclibcng-testrunner.sh and its two variants, which differed only in
- * how they announce a test and whether they colour the result:
+ * Does what uclibcng-testrunner.sh does, and what its two variants did, which
+ * differed only in how they announce a test and whether they colour the result:
  *
  *   uclibcng-testrunner.sh        plain text, overwriting ".... name" progress
- *   uclibcng-testrunner_qemu.sh   plain text, a "RUN name" line per test
- *   uclibcng-testrunner_color.sh  ANSI colours, overwriting progress
+ *   uclibcng-testrunner_qemu.sh   plain text, a "RUN name" line per test (gone)
+ *   uclibcng-testrunner_color.sh  ANSI colours, overwriting progress (gone)
  *
  * so this takes -r and -c and covers all three.  The output is byte for byte
  * what the scripts produced, plus one new line per test:

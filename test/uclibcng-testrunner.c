@@ -67,6 +67,7 @@ static int opt_runlines;	/* -r: "RUN name" instead of the \r progress   */
 static int is_init;		/* running as PID 1, see init_setup()         */
 
 static int nfail, nskip, npass;
+static int kmsg_fd = -1;	/* /dev/kmsg as init, see kernel_log() */
 
 /* ------------------------------------------------------------------ output */
 
@@ -129,6 +130,40 @@ surface_skips(const char *path)
 		}
 	}
 	fclose(f);
+}
+
+/* What the kernel logged while a test ran -- above all the register dump
+   print-fatal-signals adds when one dies of a signal.  On the console it
+   came out in the middle of the runner's lines, tearing a marker or a
+   result apart, so as init the console stays quiet and the messages are
+   read from /dev/kmsg after each test instead: printed under a failure,
+   dropped otherwise.  A record is "prio,seq,usec,flags;text"; one read
+   returns one record, EAGAIN means there is no more. */
+static void
+kernel_log(int show)
+{
+	char buf[8192], *text;
+	ssize_t n;
+
+	if (kmsg_fd < 0)
+		return;
+	for (;;) {
+		n = read(kmsg_fd, buf, sizeof buf - 1);
+		if (n < 0) {
+			if (errno == EPIPE)	/* overwritten, go on */
+				continue;
+			break;
+		}
+		if (n == 0)
+			break;
+		buf[n] = '\0';
+		if (!show)
+			continue;
+		text = strchr(buf, ';');
+		text = text ? text + 1 : buf;
+		text[strcspn(text, "\n")] = '\0';	/* drop the key=value lines */
+		printf("\tkernel: %s\n", text);
+	}
 }
 
 /* ------------------------------------------------------------- the command */
@@ -441,6 +476,7 @@ run_suite(const char *infile)
 		if (chdir(subdir) != 0) {
 			result("FAIL", "31", subdir, binary, " cannot chdir");
 			nfail++;
+			kernel_log(1);
 			continue;
 		}
 		if (!getcwd(subcwd, sizeof subcwd))
@@ -466,6 +502,7 @@ run_suite(const char *infile)
 			printf("TIME %s %ld\n", binary, ms);
 			nskip++;
 			cat_indented(outpath, "\t");
+			kernel_log(0);
 			continue;
 		}
 		if (ret != expected) {
@@ -477,6 +514,7 @@ run_suite(const char *infile)
 			printf("TIME %s %ld\n", binary, ms);
 			nfail++;
 			cat_indented(outpath, "\t");
+			kernel_log(1);
 			continue;
 		}
 
@@ -491,12 +529,14 @@ run_suite(const char *infile)
 				result("PASS", "32", subdir, binary, "");
 				printf("TIME %s %ld\n", binary, ms);
 				npass++;
+				kernel_log(0);
 			} else {
 				result("FAIL", "31", subdir, binary,
 				       " expected output differs");
 				printf("TIME %s %ld\n", binary, ms);
 				nfail++;
 				show_diff(outpath, gpath);
+				kernel_log(1);
 			}
 			continue;
 		}
@@ -506,6 +546,7 @@ run_suite(const char *infile)
 		printf("TIME %s %ld\n", binary, ms);
 		npass++;
 		surface_skips(outpath);
+		kernel_log(0);
 	}
 	fclose(in);
 
@@ -580,9 +621,13 @@ init_setup(void)
 	if (sethostname("Qemu", 4) != 0) {
 		/* cosmetic, the run does not need it */
 	}
-	/* register dump on fatal signals, and the console level to show it */
+	/* register dump on fatal signals; it is read from /dev/kmsg, the
+	   console stays quiet during the run (see kernel_log()) */
 	write_file("/proc/sys/kernel/print-fatal-signals", "1");
-	write_file("/proc/sys/kernel/printk", "8");
+	write_file("/proc/sys/kernel/printk", "1");
+	kmsg_fd = open("/dev/kmsg", O_RDONLY | O_NONBLOCK);
+	if (kmsg_fd >= 0)
+		lseek(kmsg_fd, 0, SEEK_END);	/* not the boot log */
 
 	/* what busybox init exported */
 	setenv("HOME", "/", 1);
@@ -608,6 +653,8 @@ init_finish(void)
 {
 	char *argv[] = { "sh", NULL };
 
+	/* for the interactive look, the kernel may talk again */
+	write_file("/proc/sys/kernel/printk", "8");
 	puts("\nshell on the console; rerun with ./uclibcng-testrunner -c,"
 	     " quit with reboot -f\n");
 	fflush(stdout);

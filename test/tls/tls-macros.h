@@ -60,6 +60,14 @@
 #include <tls-macros-microblaze.h>
 #endif
 
+#ifdef __kvx__
+#include <tls-macros-kvx.h>
+#endif
+
+#ifdef __nds32__
+#include <tls-macros-nds32.h>
+#endif
+
 #ifdef __loongarch__
 #include <tls-macros-loongarch.h>
 #endif

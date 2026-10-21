@@ -51,21 +51,8 @@ if not is_set("UCLIBC_HAS_WCHAR"):
 
 if is_set("HAS_NO_THREADS"):
     no.update(["NO_THREADS", "NO_NPTL", "NO_TLS"])
-# LinuxThreads has no TLS and is not NPTL, but it does have threads: test/pthread
-# holds ex1..ex8, the original LinuxThreads examples.  Running them is what the
-# NO_THREADS entry used to prevent.  sparc goes first -- extend the exception to
-# the other linuxthreads targets once we know what they do with those tests.
 if is_set("UCLIBC_HAS_LINUXTHREADS"):
     no.update(["NO_NPTL", "NO_TLS"])
-    if not arch("sparc"):
-        no.add("NO_THREADS")
-
-if arch("kvx"):
-    no.add("NO_TLS")
-# no tls-macros-nds32.h in test/tls -> tst-tls* hit the
-# "No support for this architecture" #error and fail to compile
-if arch("nds32"):
-    no.add("NO_TLS")
 
 # math/ ran nowhere since 79524cb ("github always set NO_MATH for now", 2023-11-21),
 # and SH2 and alpha had been exempted two days before that in c189229; neither commit
@@ -89,36 +76,17 @@ if "NO_DL" in no:
         "tst-tls14", "tst-tls15", "tst-tls17", "tst-tls18", "tst-tls-at-ctor",
         "tst-tls1-pie", "tst-tls2-pie", "tst-tls3-pie")])
 
-# Inherited from the makefiles as they were, without a reason recorded.  Most
-# of these targets have no qemu in the CI, so nobody has checked whether they
-# still fail; prune with a run, not by guessing.
-if arch("sh"):
-    # "deadlock"
-    disable(*["nptl/" + t for t in (
-        "tst-cond1", "tst-cond4", "tst-cond6", "tst-cond7", "tst-cond10",
-        "tst-cond13", "tst-cond14", "tst-cond15", "tst-cond18", "tst-cond20",
-        "tst-cond21", "tst-cond22", "tst-cputimer1", "tst-cputimer2",
-        "tst-cputimer3", "tst-mutex8", "tst-timer4", "tst-timer5", "tst-spin3")])
-    disable("pthread/ex2", "pthread/ex7")
-if arch("metag"):
-    disable("nptl/tst-cleanup0", "nptl/tst-cleanupx0")
-if arch("riscv32"):
-    disable("nptl/tst-rwlock9")
-if arch("riscv64"):
-    disable("inet/tst-ifaddrs")
-if arch("nds32"):
-    disable("pthread/ex3")
-if arch("cris"):
-    disable("pthread/ex2", "pthread/ex5")
-if arch("avr32"):
-    disable("misc/tst-inotify", "time/tst-timerfd", "unistd/tst-fallocate",
-            "unistd/tst-posix_fallocate", "unistd/tst-fallocate64")
-if arch("bfin"):
-    disable("misc/tst-rlimit", "misc/tst-rlimit64")
-if arch("h8300"):
-    disable("string/stratcliff")
-if arch("or1k"):
-    disable("unistd/tst-pselect")
+# kvx: binutils keeps one "GOT entry initialised" mark per symbol, not per
+# TLS model (bfd/elfnn-kvx.c, symbol_got_offset_mark).  When a symbol is
+# reached through IE first and GD or LD later in the same link, the GD/LD
+# entry is reserved but never written -- no DTPMOD/DTPOFF, module 0 --
+# so __tls_get_addr returns NULL.  tst-tls1..3 mix the models on purpose.
+# Measured 2026-10-21 with binutils 2.46 / kvx gcc 9.4.1: IE then GD on one
+# variable links to a lone R_KVX_64_TPOFF, GD alone to DTPMOD + DTPOFF.
+# Off until the linker is fixed.
+if arch("kvx"):
+    disable("tls/tst-tls1", "tls/tst-tls1-pie", "tls/tst-tls2",
+            "tls/tst-tls2-pie", "tls/tst-tls3", "tls/tst-tls3-pie")
 
 
 out = [n + "=1" for n in sorted(no)]

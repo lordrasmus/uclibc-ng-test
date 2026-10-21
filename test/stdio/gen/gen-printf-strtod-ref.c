@@ -39,6 +39,9 @@ int main (void)
   static const char *const edge[] = {
     "0x1p1023", "0x1p1024", "0x1.fffffffffffffp1023", "0x1p-1074",
     "0x1p-1075", "0x1p-1076", "0x1p-2000", "0x1p+5000", "0x1p-5000",
+    /* the smallest normal with a binary exponent past 1023, where the
+       old scaling loop overflowed its factor and returned 0 */
+    "0x8p-1025",
     "0x0.00000000000000000000000000000000000001p-1000",
     "0x10000000000000000000000000000000000000p-1100",
     "1e308", "1.7976931348623157e308", "1.7976931348623159e308", "1e309",

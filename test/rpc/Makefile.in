@@ -1,7 +1,0 @@
-# uClibc-ng rpc tests
-# Licensed under the LGPL v2.1, see the file COPYING.LIB in this tarball.
-
-TESTS := getrpcent getrpcent_r
-
-DODIFF_getrpcent := 1
-

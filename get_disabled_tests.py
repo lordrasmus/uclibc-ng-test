@@ -89,13 +89,6 @@ if "NO_DL" in no:
         "tst-tls14", "tst-tls15", "tst-tls17", "tst-tls18", "tst-tls-at-ctor",
         "tst-tls1-pie", "tst-tls2-pie", "tst-tls3-pie")])
 
-# Only with the option: neither the function nor its declaration exist without
-# it, so these do not even build.
-if not is_set("UCLIBC_HAS_REENTRANT_RPC"):
-    disable("rpc/getrpcent_r")
-if not is_set("UCLIBC_HAS_ARC4RANDOM"):
-    disable("stdlib/testarc4random")
-
 # Inherited from the makefiles as they were, without a reason recorded.  Most
 # of these targets have no qemu in the CI, so nobody has checked whether they
 # still fail; prune with a run, not by guessing.

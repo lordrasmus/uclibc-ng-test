@@ -6,7 +6,12 @@ shellescape='$(subst ','\'',$(1))'
 ifeq ($(TESTS),)
 TESTS := $(patsubst %.c,%,$(wildcard *.c))
 endif
-ifneq ($(TESTS_DISABLED),)
+# DISABLED_TESTS comes from get_disabled_tests.py, the one place that decides
+# what does not run: dir/test pairs separated by commas, so that it survives
+# "export $(...)".  Each directory takes its own.
+comma := ,
+TESTS_DISABLED += $(patsubst $(notdir $(CURDIR))/%,%,$(filter $(notdir $(CURDIR))/%,$(subst $(comma), ,$(DISABLED_TESTS))))
+ifneq ($(strip $(TESTS_DISABLED)),)
 TESTS := $(filter-out $(TESTS_DISABLED),$(TESTS))
 endif
 

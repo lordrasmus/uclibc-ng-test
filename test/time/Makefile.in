@@ -26,10 +26,6 @@
 TESTS_DISABLED := bug-asctime bug-asctime_r time \
 	tst-strftime tst-strptime tst-timezone
 
-ifeq ($(TARGET_ARCH),avr32)
-TESTS_DISABLED += tst-timerfd
-endif
-
 # tst-ftime_l and tst_wcsftime ask features.h themselves.  The suite never
 # reads uClibc's .config, so these variables were always empty and both tests
 # were disabled on every target.

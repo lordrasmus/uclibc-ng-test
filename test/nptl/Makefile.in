@@ -17,22 +17,6 @@ ifneq ($(TARGET_ARCH),alpha)
 CFLAGS += -DHAVE_TLS_MODEL_ATTRIBUTE=1
 endif
 
-ifeq ($(TARGET_ARCH),metag)
-TESTS_DISABLED := tst-cleanup0 tst-cleanupx0
-endif
-
-ifeq ($(TARGET_ARCH),riscv32)
-TESTS_DISABLED := tst-rwlock9
-endif
-
-# deadlock
-ifeq ($(TARGET_ARCH),sh)
-TESTS_DISABLED := tst-cond1 tst-cond4 tst-cond6 tst-cond7 tst-cond10 \
-	tst-cond13 tst-cond14 tst-cond15 tst-cond18 tst-cond20 \
-	tst-cond21 tst-cond22 tst-cputimer1 tst-cputimer2 tst-cputimer3 \
-	tst-mutex8 tst-timer4 tst-timer5 tst-spin3
-endif
-
 TESTS := tst-align tst-align2 tst-atfork1 tst-attr1 tst-attr2 tst-attr3	\
 	tst-barrier1 tst-barrier2 tst-barrier3 tst-barrier4 tst-basic1	\
 	tst-basic2 tst-basic3 tst-basic4 tst-basic5 tst-basic6		\
@@ -92,13 +76,6 @@ TESTS += tls_local_exec pthread_cancel-points pthread_cancel-sem_wait \
 	pthread_atfork-errno-clobber
 
 TESTS += tst-thread-db
-
-# A libc without shared support cannot link the modules these tests load,
-# and -pie has no loader to relocate it.  NO_DL marks such a build.
-ifeq ($(NO_DL),1)
-TESTS_DISABLED += tst-tls3 tst-tls4 tst-tls5 tst-atfork2 tst-cancelx4-pie \
-	tst-thread-db
-endif
 
 # tst-tls5 is a driver, not a test: it has no TLS objects of its own, and the
 # only module linked against it, tst-tls5mod.so, has none either -- all of them

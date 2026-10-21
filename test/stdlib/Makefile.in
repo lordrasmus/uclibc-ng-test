@@ -7,12 +7,7 @@ DODIFF_teston_exit := 1
 DODIFF_teststrtol  := 1
 
 TESTS_DISABLED :=
-# ptytest.c asks features.h itself.  The suite never reads uClibc's .config, so
-# this variable was always empty and the test was disabled on every target.
-#
-# testarc4random below keeps its gate on purpose: arc4random() exists in
-# neither the headers nor the library, so the test cannot be built at all and
-# converting the gate would only turn a skip into a link error.
-ifeq ($(UCLIBC_HAS_ARC4RANDOM),)
-TESTS_DISABLED += testarc4random
-endif
+# ptytest.c asks features.h itself.  testarc4random is switched off by
+# get_disabled_tests.py unless UCLIBC_HAS_ARC4RANDOM is set: arc4random()
+# exists in neither the headers nor the library otherwise, so the test could
+# not even be built.

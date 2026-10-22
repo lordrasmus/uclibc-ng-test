@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <termios.h>
+#include <threads.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -99,6 +100,38 @@ void help_sigset_setup(void)
 	sigemptyset(&empty_set);
 }
 
+/* the C11 waits need their own objects, set up by the C11 calls */
+cnd_t c11_cond;
+mtx_t c11_mutex;
+void help_c11_cnd_setup(void)
+{
+	if (cnd_init(&c11_cond) != thrd_success
+	    || mtx_init(&c11_mutex, mtx_timed) != thrd_success
+	    || mtx_lock(&c11_mutex) != thrd_success) {
+		puts("cnd_init/mtx_init/mtx_lock failed");
+		exit(-1);
+	}
+}
+
+/* thrd_join needs a thread that never ends */
+thrd_t c11_join_target;
+int c11_join_target_func(void *arg)
+{
+	for (;;)
+		pause();
+	return 0;
+}
+void help_thrd_join_setup(void)
+{
+	if (thrd_create(&c11_join_target, c11_join_target_func, NULL)
+	    != thrd_success) {
+		puts("thrd_create failed");
+		exit(-1);
+	}
+}
+
+const struct timespec one_sec = { .tv_sec = 1, .tv_nsec = 0 };
+
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t mutex;
 void help_pthread_setup(void)
@@ -148,6 +181,8 @@ MAKE_CANCEL_THREAD_FUNC_EX(aio_suspend, (aio_list, 1, NULL), help_aio_setup())
 #endif
 MAKE_CANCEL_THREAD_FUNC(clock_nanosleep, (0, 0, NULL, NULL))
 MAKE_CANCEL_THREAD_FUNC(close, (-1))
+MAKE_CANCEL_THREAD_FUNC_EX(cnd_timedwait, (&c11_cond, &c11_mutex, &zero_sec), help_c11_cnd_setup())
+MAKE_CANCEL_THREAD_FUNC_EX(cnd_wait, (&c11_cond, &c11_mutex), help_c11_cnd_setup())
 MAKE_CANCEL_THREAD_FUNC(connect, (-1, NULL, 0))
 MAKE_CANCEL_THREAD_FUNC(creat, ("", 0))
 MAKE_CANCEL_THREAD_FUNC(fcntl, (0, F_SETLKW, NULL))
@@ -196,6 +231,8 @@ MAKE_CANCEL_THREAD_FUNC_EX(sigwaitinfo, (&empty_set, NULL), help_sigset_setup())
 MAKE_CANCEL_THREAD_FUNC(sleep, (0))
 MAKE_CANCEL_THREAD_FUNC(system, (""))
 MAKE_CANCEL_THREAD_FUNC(tcdrain, (-1))
+MAKE_CANCEL_THREAD_FUNC_EX(thrd_join, (c11_join_target, NULL), help_thrd_join_setup())
+MAKE_CANCEL_THREAD_FUNC(thrd_sleep, (&one_sec, NULL))
 #ifdef __UCLIBC_SUSV3_LEGACY__
 MAKE_CANCEL_THREAD_FUNC(usleep, (0))
 #endif
@@ -271,6 +308,8 @@ int main(int argc, char *argv[])
 #endif
 	ret += TEST_FUNC(clock_nanosleep);
 	ret += TEST_FUNC(close);
+	ret += TEST_FUNC(cnd_timedwait);
+	ret += TEST_FUNC(cnd_wait);
 	ret += TEST_FUNC(connect);
 	ret += TEST_FUNC(creat);
 	ret += TEST_FUNC(fcntl);
@@ -319,6 +358,8 @@ int main(int argc, char *argv[])
 	ret += TEST_FUNC(sleep);
 	ret += TEST_FUNC(system);
 	ret += TEST_FUNC(tcdrain);
+	ret += TEST_FUNC(thrd_join);
+	ret += TEST_FUNC(thrd_sleep);
 #ifdef __UCLIBC_SUSV3_LEGACY__
 	ret += TEST_FUNC(usleep);
 #endif

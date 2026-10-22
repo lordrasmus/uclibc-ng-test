@@ -77,6 +77,11 @@ TESTS += tls_local_exec pthread_cancel-points pthread_cancel-sem_wait \
 
 TESTS += tst-thread-db
 
+# ISO C11 threads, from glibc's sysdeps/pthread
+TESTS += tst-call-once tst-cnd-basic tst-cnd-broadcast tst-cnd-timedwait \
+	tst-mtx-basic tst-mtx-recursive tst-mtx-timedlock tst-mtx-trylock \
+	tst-thrd-detach tst-thrd-sleep tst-tss-basic tst-thrd-return
+
 
 
 ifeq ($(TARGET_ARCH),i386)

@@ -3,7 +3,5 @@
 
 DODIFF_64bit := 1
 
-# The suite never reads uClibc's .config, so this variable was always empty
-# and the test was disabled everywhere.  It asks features.h itself now.
-
-TESTS_DISABLED += printf_fp
+# printf_fp.c is the body printf_efg.c and printf_a.c include, it has no main.
+TESTS := $(filter-out printf_fp,$(patsubst %.c,%,$(wildcard *.c)))

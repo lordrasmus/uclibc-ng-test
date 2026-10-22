@@ -6,4 +6,3 @@ DODIFF_testatexit  := 1
 DODIFF_teston_exit := 1
 DODIFF_teststrtol  := 1
 
-TESTS_DISABLED :=

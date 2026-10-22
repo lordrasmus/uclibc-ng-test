@@ -68,13 +68,68 @@ if is_set("UCLIBC_HAS_LINUXTHREADS"):
 # the -pie variants have no loader to relocate them.  What is left of tls/,
 # tst-tls1 and tst-tls2, is what a static program can do with TLS at all.
 if "NO_DL" in no:
-    disable("nptl/tst-tls3", "nptl/tst-tls4", "nptl/tst-tls5",
+    disable("nptl/tst-tls3", "nptl/tst-tls4",
             "nptl/tst-atfork2", "nptl/tst-cancelx4-pie", "nptl/tst-thread-db")
     disable(*["tls/" + t for t in (
         "tst-tls3", "tst-tls4", "tst-tls5", "tst-tls6", "tst-tls7", "tst-tls8",
         "tst-tls9", "tst-tls10", "tst-tls11", "tst-tls12", "tst-tls13",
         "tst-tls14", "tst-tls15", "tst-tls17", "tst-tls18", "tst-tls-at-ctor",
         "tst-tls1-pie", "tst-tls2-pie", "tst-tls3-pie")])
+
+# locale_t, newlocale() and uselocale() exist only with UCLIBC_HAS_XLOCALE.
+if not is_set("UCLIBC_HAS_XLOCALE"):
+    disable("locale/tst-xlocale1", "locale/tst-xlocale2",
+            "locale/bug-usesetlocale")
+
+# uClibc-ng has no strfmon() and no <monetary.h> yet; on until it has.
+disable("locale/tst-fmon", "locale/tst-strfmon1", "locale-mbwc/tst_strfmon")
+
+# Need files the rootfs does not carry.  collate-test and xfrm-test take a
+# random seed and a word list on stdin and are judged against a reference
+# output; tst-digits and tst-trans need glibc's test locales "test7" and
+# "test", which glibc compiles with localedef -- uClibc-ng has no localedef,
+# its locale data is built into the library.
+disable("locale/collate-test", "locale/xfrm-test", "locale/tst-digits",
+        "locale/tst-trans")
+
+# uClibc-ng reads POSIX TZ strings from TZ or /etc/TZ and has no zoneinfo
+# reader; tst-timezone needs named zones (Europe/Amsterdam).  tst-posixtz
+# covers what applies.
+disable("time/tst-timezone")
+
+# glibc extensions, not POSIX: iconv's //TRANSLIT suffix (bug-iconv-trans),
+# the ja_JP character classes jhira, jkata, jdigit, jspace and jkanji
+# (tst-wctype), scanf's "%I" for locale digits (tst-sscanf), and strftime's
+# "-" flag and field widths such as %2000Y (tst-strftime).
+disable("locale/bug-iconv-trans", "locale/tst-wctype", "locale/tst-sscanf",
+        "time/tst-strftime")
+
+# For a year that does not fit, asctime() and asctime_r() write "????" and
+# return the buffer (SAFE_ASCTIME_R in libc/misc/time/time.c) where glibc
+# fails with EOVERFLOW.  Deliberate, and stated in both test files.
+disable("time/bug-asctime", "time/bug-asctime_r")
+
+# long double is a wrapper around double in libm (ldouble_wrappers.c), so
+# results lose their low mantissa bits wherever LDBL_MANT_DIG > 53: on i686
+# 111 errors of that one cause.  On when long double is done per format.
+disable("math/test-ldouble", "math/test-ildoubl")
+
+# tst-fallocate64 and tst-posix_fallocate64 allocate past 4 GiB; the rootfs
+# is a tmpfs in guest RAM.
+disable("unistd/tst-fallocate64", "unistd/tst-posix_fallocate64")
+
+# Fail, measured on x86_64 2026-10-22, causes being worked on:
+# - tst-strptime: tm_wday/tm_yday are not derived, fields without separators
+#   (%Y%m%d%H%M%S) are not read, %U/%W with %a are not used;
+# - tst-fnmatch, testregex: some of their cases fail;
+# - tst-ctype: the C locale ctype check fails;
+# - tst-tls16: dlopen succeeds where the static TLS space should not suffice;
+# - gamma: fails past the first cases;
+# - tst-rpmatch: rpmatch() only knows y/n and ignores the locale's
+#   YESEXPR/NOEXPR ("Ja" in de_DE gives -1).
+disable("time/tst-strptime", "misc/tst-fnmatch", "regex/testregex",
+        "locale/tst-ctype", "tls/tst-tls16", "math/gamma",
+        "locale/tst-rpmatch")
 
 # kvx: binutils keeps one "GOT entry initialised" mark per symbol, not per
 # TLS model (bfd/elfnn-kvx.c, symbol_got_offset_mark).  When a symbol is

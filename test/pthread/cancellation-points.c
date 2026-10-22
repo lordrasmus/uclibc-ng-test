@@ -166,6 +166,7 @@ MAKE_CANCEL_THREAD_FUNC(open, ("", 0))
 MAKE_CANCEL_THREAD_FUNC(openat, (AT_FDCWD, "", 0))
 MAKE_CANCEL_THREAD_FUNC(pause, ())
 MAKE_CANCEL_THREAD_FUNC(poll, (NULL, 0, 0))
+MAKE_CANCEL_THREAD_FUNC(posix_close, (-1, 0))
 MAKE_CANCEL_THREAD_FUNC(ppoll, (NULL, 0, &zero_sec, NULL))
 MAKE_CANCEL_THREAD_FUNC(pread, (-1, NULL, 0, 0))
 MAKE_CANCEL_THREAD_FUNC(pselect, (0, NULL, NULL, NULL, NULL, NULL))
@@ -288,6 +289,7 @@ int main(int argc, char *argv[])
 	ret += TEST_FUNC(openat);
 	ret += TEST_FUNC(pause);
 	ret += TEST_FUNC(poll);
+	ret += TEST_FUNC(posix_close);
 	ret += TEST_FUNC(ppoll);
 	ret += TEST_FUNC(pread);
 	ret += TEST_FUNC(pselect);

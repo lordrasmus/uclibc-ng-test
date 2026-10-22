@@ -67,8 +67,15 @@ int main(void)
 
 	tm = TM_Y2038;
 	t = mktime(&tm);
-	tm = *(gmtime(&t));
-	TEST_TM(*tm_p, TM_Y2038, "mktime/gmtime(Y2038)");
+	if (sizeof(time_t) > 4) {
+		tm = *(gmtime(&t));
+		TEST_TM(*tm_p, TM_Y2038, "mktime/gmtime(Y2038)");
+	} else if (t != (time_t)-1) {
+		/* one second past 2^31-1 does not fit */
+		printf(__FILE__ ":%d: mktime(Y2038) gave %ld, expected -1\n",
+		       __LINE__, (long)t);
+		err++;
+	}
 
 	/* FIXME: set a TZ var and check DST boundary conditions */
 

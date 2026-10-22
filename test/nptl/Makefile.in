@@ -8,8 +8,8 @@ O2_TWINS := 1
 # them; there is no code for -O2 to compile differently.
 TESTS_NO_O2 := tst-exit2 tst-exit3 tst-stdio1
 
-# tst-tls4 with its two modules, and tst-tls5 with its seven, ask for these
-# macros and are the only files here that do.  They were defined in
+# tst-tls4 with its two modules asks for these macros and is the only file
+# here that does.  They were defined in
 # test/tls/Makefile.in only, so both tests compiled to an empty body and
 # reported PASS on every target.
 CFLAGS += -DUSE_TLS=1 -DHAVE___THREAD=1
@@ -46,7 +46,7 @@ TESTS := tst-align tst-align2 tst-atfork1 tst-attr1 tst-attr2 tst-attr3	\
 	tst-sem9 tst-signal1 tst-signal2 tst-signal3 tst-signal4	\
 	tst-signal5 tst-signal6 tst-spin1 tst-spin2 tst-spin3		\
 	tst-stack1 tst-stack2 tst-stdio1 tst-stdio2 tst-sysconf		\
-	tst-tls1 tst-tls2 tst-tls3 tst-tls4 tst-tls5 tst-tsd1 tst-tsd2	\
+	tst-tls1 tst-tls2 tst-tls3 tst-tls4 tst-tsd1 tst-tsd2	\
 	tst-tsd3 tst-tsd4 tst-tsd5 tst-umask1 tst-cond-deadlock 	\
 	tst-align3 tst-cancel4 tst-cancel5 tst-cancel18 tst-cancel23	\
 	tst-cancel25 tst-cancelx2 tst-cancelx3 tst-cancelx4 \
@@ -77,17 +77,6 @@ TESTS += tls_local_exec pthread_cancel-points pthread_cancel-sem_wait \
 
 TESTS += tst-thread-db
 
-# tst-tls5 is a driver, not a test: it has no TLS objects of its own, and the
-# only module linked against it, tst-tls5mod.so, has none either -- all of them
-# sit in tst-tls5mod{a..f}.so.  glibc supplies those with LD_PRELOAD from
-# tst-tls6.sh, which runs the driver once per combination (a/e/f x b,c,d); we
-# have no equivalent, so enabled it would find cnt == 1, skip its whole layout
-# check and pass.  Two further things it wants are not reachable from outside
-# the library either: attribute_hidden, and the size and alignment of struct
-# pthread, which it registers so that an object overlapping the thread
-# descriptor is caught.  Disabled by name rather than left to compile to an
-# empty body, which is what it did until now.
-TESTS_DISABLED += tst-tls5
 
 
 ifeq ($(TARGET_ARCH),i386)
@@ -101,13 +90,6 @@ CFLAGS_tst-initializers1 := -W -Werror
 CFLAGS_tst-tls3mod.so := -fPIC -DPIC -DSHARED -shared
 CFLAGS_tst-tls4moda.so := -fPIC -DPIC -DSHARED -shared
 CFLAGS_tst-tls4modb.so := -fPIC -DPIC -DSHARED -shared
-CFLAGS_tst-tls5mod.so := -fPIC -DPIC -DSHARED -shared
-CFLAGS_tst-tls5moda.so := -fPIC -DPIC -DSHARED -shared
-CFLAGS_tst-tls5modb.so := -fPIC -DPIC -DSHARED -shared
-CFLAGS_tst-tls5modc.so := -fPIC -DPIC -DSHARED -shared
-CFLAGS_tst-tls5modd.so := -fPIC -DPIC -DSHARED -shared
-CFLAGS_tst-tls5mode.so := -fPIC -DPIC -DSHARED -shared
-CFLAGS_tst-tls5modf.so := -fPIC -DPIC -DSHARED -shared
 
 CFLAGS_tst-fini1mod.so := -fPIC -DPIC -DSHARED -shared
 LDFLAGS_tst-cond11 = -lrt
@@ -187,7 +169,6 @@ LDFLAGS_tst-cond19 := -lrt
 LDFLAGS_tst-rwlock14 := -lrt
 LDFLAGS_tst-tls3 := -ldl -rdynamic
 LDFLAGS_tst-tls4 := -ldl
-LDFLAGS_tst-tls5 :=  tst-tls5mod.so
 LDFLAGS_tst-clock := -lrt
 LDFLAGS_tst-clock_nanosleep := -lrt
 LDFLAGS_tst-cpuclock1 := -lrt
@@ -212,13 +193,6 @@ LDFLAGS_tst-dlsym1 := -ldl -rdynamic
 LDFLAGS_tst-tls3mod.so := -shared -static-libgcc -lpthread
 LDFLAGS_tst-tls4moda.so := -shared -static-libgcc
 LDFLAGS_tst-tls4modb.so := -shared -static-libgcc
-LDFLAGS_tst-tls5mod.so := -shared -static-libgcc -Wl,-soname,tst-tls5mod.so
-LDFLAGS_tst-tls5moda.so := -shared -static-libgcc
-LDFLAGS_tst-tls5modb.so := -shared -static-libgcc
-LDFLAGS_tst-tls5modc.so := -shared -static-libgcc
-LDFLAGS_tst-tls5modd.so := -shared -static-libgcc
-LDFLAGS_tst-tls5mode.so := -shared -static-libgcc
-LDFLAGS_tst-tls5modf.so := -shared -static-libgcc
 LDFLAGS_tst-cleanupx4 := tst-cleanup4aux.o
 
 #
@@ -230,7 +204,6 @@ tst-cleanup4aux.o:
 tst-cleanup4: tst-cleanup4aux.o
 tst-tls3: tst-tls3mod.so
 tst-tls4: tst-tls4moda.so tst-tls4modb.so
-tst-tls5: tst-tls5mod.so
 
 tst-cleanupx4 : tst-cleanup4aux.o
 tst-fini1: tst-fini1mod.so

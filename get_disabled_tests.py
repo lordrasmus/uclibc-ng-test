@@ -76,6 +76,12 @@ if "NO_DL" in no:
         "tst-tls14", "tst-tls15", "tst-tls17", "tst-tls18", "tst-tls-at-ctor",
         "tst-tls1-pie", "tst-tls2-pie", "tst-tls3-pie")])
 
+# POSIX AIO runs each request in a thread and exists only with NPTL.
+if not is_set("UCLIBC_HAS_THREADS_NATIVE"):
+    disable(*["rt/" + t for t in (
+        "tst-aio", "tst-aio2", "tst-aio3", "tst-aio5", "tst-aio6", "tst-aio7",
+        "tst-aio8", "tst-aio9", "tst-aio10", "tst-aio64")])
+
 # locale_t, newlocale() and uselocale() exist only with UCLIBC_HAS_XLOCALE.
 if not is_set("UCLIBC_HAS_XLOCALE"):
     disable("locale/tst-xlocale1", "locale/tst-xlocale2",

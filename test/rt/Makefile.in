@@ -3,4 +3,7 @@
 
 LDFLAGS_tst-shm := -lrt
 
+# tst-aio*: from glibc's rt/, POSIX asynchronous I/O
+EXTRA_LDFLAGS := -lrt -lpthread
+
 OPTS_tst-posix_spawn := ls

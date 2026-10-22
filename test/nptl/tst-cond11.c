@@ -23,16 +23,23 @@
 #include <unistd.h>
 
 
+/* A bogus clock value that tells run_test to use pthread_cond_timedwait
+   rather than pthread_cond_clockwait.  */
+#define CLOCK_USE_ATTR_CLOCK (-1)
+
 #if defined _POSIX_CLOCK_SELECTION && _POSIX_CLOCK_SELECTION >= 0
 static int
-run_test (clockid_t cl)
+run_test (clockid_t cl, clockid_t wait_clock)
 {
   pthread_condattr_t condattr;
   pthread_cond_t cond;
   pthread_mutexattr_t mutattr;
   pthread_mutex_t mut;
 
-  printf ("clock = %d\n", (int) cl);
+  printf ("clock = %d, wait clock = %d\n", (int) cl, (int) wait_clock);
+  int use_attr = wait_clock == CLOCK_USE_ATTR_CLOCK;
+  if (use_attr)
+    wait_clock = cl;
 
   if (pthread_condattr_init (&condattr) != 0)
     {
@@ -108,7 +115,7 @@ run_test (clockid_t cl)
     }
 
   struct timespec ts;
-  if (clock_gettime (cl, &ts) != 0)
+  if (clock_gettime (wait_clock, &ts) != 0)
     {
       puts ("clock_gettime failed");
       return 1;
@@ -117,7 +124,9 @@ run_test (clockid_t cl)
   /* Wait one second.  */
   ++ts.tv_sec;
 
-  int e = pthread_cond_timedwait (&cond, &mut, &ts);
+  int e = use_attr
+	  ? pthread_cond_timedwait (&cond, &mut, &ts)
+	  : pthread_cond_clockwait (&cond, &mut, wait_clock, &ts);
   if (e == 0)
     {
       puts ("cond_timedwait succeeded");
@@ -126,6 +135,21 @@ run_test (clockid_t cl)
   else if (e != ETIMEDOUT)
     {
       puts ("cond_timedwait did not return ETIMEDOUT");
+      return 1;
+    }
+
+  /* The wait must not end before the timeout on its own clock.  */
+  struct timespec now;
+  if (clock_gettime (wait_clock, &now) != 0)
+    {
+      puts ("clock_gettime failed");
+      return 1;
+    }
+  if (now.tv_sec < ts.tv_sec
+      || (now.tv_sec == ts.tv_sec && now.tv_nsec < ts.tv_nsec))
+    {
+      printf ("timed out at %ld.%09ld, before %ld.%09ld\n",
+	      (long) now.tv_sec, now.tv_nsec, (long) ts.tv_sec, ts.tv_nsec);
       return 1;
     }
 
@@ -162,7 +186,20 @@ do_test (void)
 
 #else
 
-  int res = run_test (CLOCK_REALTIME);
+  int res = run_test (CLOCK_REALTIME, CLOCK_USE_ATTR_CLOCK);
+
+  /* Only CLOCK_REALTIME and CLOCK_MONOTONIC are valid wait clocks.  */
+  pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+  pthread_mutex_t mut = PTHREAD_MUTEX_INITIALIZER;
+  struct timespec ts = { 0, 0 };
+  pthread_mutex_lock (&mut);
+  if (pthread_cond_clockwait (&cond, &mut, CLOCK_PROCESS_CPUTIME_ID, &ts)
+      != EINVAL)
+    {
+      puts ("cond_clockwait accepted CLOCK_PROCESS_CPUTIME_ID");
+      res = 1;
+    }
+  pthread_mutex_unlock (&mut);
 
 # if defined _POSIX_MONOTONIC_CLOCK && _POSIX_MONOTONIC_CLOCK >= 0
 #  if _POSIX_MONOTONIC_CLOCK == 0
@@ -176,7 +213,12 @@ do_test (void)
     }
   else
 #  endif
-    res |= run_test (CLOCK_MONOTONIC);
+    {
+      res |= run_test (CLOCK_MONOTONIC, CLOCK_USE_ATTR_CLOCK);
+      res |= run_test (CLOCK_REALTIME, CLOCK_MONOTONIC);
+      res |= run_test (CLOCK_MONOTONIC, CLOCK_MONOTONIC);
+      res |= run_test (CLOCK_MONOTONIC, CLOCK_REALTIME);
+    }
 # else
   puts ("_POSIX_MONOTONIC_CLOCK not defined");
 # endif
@@ -185,6 +227,6 @@ do_test (void)
 #endif
 }
 
-#define TIMEOUT 3
+#define TIMEOUT 10
 #define TEST_FUNCTION do_test ()
 #include "../test-skeleton.c"

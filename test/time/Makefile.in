@@ -6,6 +6,8 @@
 # were disabled on every target.
 
 CFLAGS_tst-strptime2 := -std=c99
+# strict C11: <time.h> must give it struct timespec and timespec_get
+CFLAGS_tst-timespec_get := -U_GNU_SOURCE -std=c11
 
 DODIFF_futimens1 := 1
 DODIFF_tst_wcsftime := 1

@@ -8,6 +8,8 @@
 CFLAGS_tst-strptime2 := -std=c99
 # strict C11: <time.h> must give it struct timespec and timespec_get
 CFLAGS_tst-timespec_get := -U_GNU_SOURCE -std=c11
+# ISO C23 only
+CFLAGS_tst-timespec_getres := -U_GNU_SOURCE -D_ISOC23_SOURCE
 
 DODIFF_futimens1 := 1
 DODIFF_tst_wcsftime := 1

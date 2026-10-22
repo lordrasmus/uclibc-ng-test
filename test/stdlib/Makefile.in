@@ -6,3 +6,5 @@ DODIFF_testatexit  := 1
 DODIFF_teston_exit := 1
 DODIFF_teststrtol  := 1
 
+# ISO C23 only: call_once must come from <stdlib.h>
+CFLAGS_tst-call_once := -U_GNU_SOURCE -D_ISOC23_SOURCE

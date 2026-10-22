@@ -134,11 +134,9 @@ disable("math/test-ldouble", "math/test-ildoubl")
 disable("unistd/tst-fallocate64", "unistd/tst-posix_fallocate64")
 
 # Fail, measured on x86_64 2026-10-22, causes being worked on:
-# - tst-fnmatch, testregex: some of their cases fail;
 # - tst-tls16: dlopen succeeds where the static TLS space should not suffice;
 # - gamma: fails past the first cases.
-disable("misc/tst-fnmatch", "regex/testregex",
-        "tls/tst-tls16", "math/gamma")
+disable("tls/tst-tls16", "math/gamma")
 
 # tst-tls9-static dlopens, from a static program, modules that have
 # libc.so.0 in DT_NEEDED, as glibc's version does on purpose.  That loads a

@@ -1,0 +1,9 @@
+# uClibc-ng regex tests
+# Licensed under the LGPL v2.1, see the file COPYING.LIB in this tarball.
+
+# testregex is AT&T's conformance survey, not a pass/fail test: leftassoc
+# and rightassoc ask for opposite interpretations, and glibc 2.43 differs in
+# the same 54 cases.  It exits with the number of differences, and its output
+# must match testregex.out.good, so a new difference or a regexec that does
+# not terminate shows up.
+RET_testregex := 31

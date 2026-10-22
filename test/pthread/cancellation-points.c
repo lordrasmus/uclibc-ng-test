@@ -38,7 +38,8 @@
 #endif
 
 int cnt;
-bool ready;
+/* set from the alarm handler and from the cancelled thread */
+volatile bool ready;
 
 void cancel_timeout(int sig)
 {
@@ -132,6 +133,11 @@ void help_thrd_join_setup(void)
 
 const struct timespec one_sec = { .tv_sec = 1, .tv_nsec = 0 };
 
+/* Pointers the kernel reads before it can fail on a bad id must be
+   valid: without an MMU, the kernel reading NULL is a kernel oops.  */
+struct flock fcntl_lock;
+struct { long mtype; char mtext[1]; } msg_buf = { 1, { 0 } };
+
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t mutex;
 void help_pthread_setup(void)
@@ -179,13 +185,13 @@ void help_aio_setup(void)
 }
 MAKE_CANCEL_THREAD_FUNC_EX(aio_suspend, (aio_list, 1, NULL), help_aio_setup())
 #endif
-MAKE_CANCEL_THREAD_FUNC(clock_nanosleep, (0, 0, NULL, NULL))
+MAKE_CANCEL_THREAD_FUNC(clock_nanosleep, (CLOCK_REALTIME, 0, &one_sec, NULL))
 MAKE_CANCEL_THREAD_FUNC(close, (-1))
 MAKE_CANCEL_THREAD_FUNC_EX(cnd_timedwait, (&c11_cond, &c11_mutex, &zero_sec), help_c11_cnd_setup())
 MAKE_CANCEL_THREAD_FUNC_EX(cnd_wait, (&c11_cond, &c11_mutex), help_c11_cnd_setup())
 MAKE_CANCEL_THREAD_FUNC(connect, (-1, NULL, 0))
 MAKE_CANCEL_THREAD_FUNC(creat, ("", 0))
-MAKE_CANCEL_THREAD_FUNC(fcntl, (0, F_SETLKW, NULL))
+MAKE_CANCEL_THREAD_FUNC(fcntl, (-1, F_SETLKW, &fcntl_lock))
 MAKE_CANCEL_THREAD_FUNC(fdatasync, (-1))
 MAKE_CANCEL_THREAD_FUNC(fsync, (0))
 MAKE_CANCEL_THREAD_FUNC_EX(lockf, (lockf_fd, F_LOCK, 0), help_lockf_setup())
@@ -193,10 +199,10 @@ MAKE_CANCEL_THREAD_FUNC(mq_receive, (0, mq_buf, sizeof(mq_buf), NULL))
 MAKE_CANCEL_THREAD_FUNC(mq_send, (0, mq_buf, 0, 0))
 MAKE_CANCEL_THREAD_FUNC(mq_timedreceive, (0, mq_buf, sizeof(mq_buf), NULL, &zero_sec))
 MAKE_CANCEL_THREAD_FUNC(mq_timedsend, (0, mq_buf, 0, 0, &zero_sec))
-MAKE_CANCEL_THREAD_FUNC(msgrcv, (-1, NULL, 0, 0, 0))
-MAKE_CANCEL_THREAD_FUNC(msgsnd, (-1, NULL, 0, 0))
+MAKE_CANCEL_THREAD_FUNC(msgrcv, (-1, &msg_buf, sizeof(msg_buf.mtext), 0, 0))
+MAKE_CANCEL_THREAD_FUNC(msgsnd, (-1, &msg_buf, 0, 0))
 MAKE_CANCEL_THREAD_FUNC(msync, (NULL, 0, 0))
-MAKE_CANCEL_THREAD_FUNC(nanosleep, (NULL, NULL))
+MAKE_CANCEL_THREAD_FUNC(nanosleep, (&one_sec, NULL))
 MAKE_CANCEL_THREAD_FUNC(open, ("", 0))
 MAKE_CANCEL_THREAD_FUNC(openat, (AT_FDCWD, "", 0))
 MAKE_CANCEL_THREAD_FUNC(pause, ())

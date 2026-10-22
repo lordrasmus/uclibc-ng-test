@@ -137,12 +137,9 @@ disable("unistd/tst-fallocate64", "unistd/tst-posix_fallocate64")
 # - tst-fnmatch, testregex: some of their cases fail;
 # - tst-ctype: the C locale ctype check fails;
 # - tst-tls16: dlopen succeeds where the static TLS space should not suffice;
-# - gamma: fails past the first cases;
-# - tst-rpmatch: rpmatch() only knows y/n and ignores the locale's
-#   YESEXPR/NOEXPR ("Ja" in de_DE gives -1).
+# - gamma: fails past the first cases.
 disable("misc/tst-fnmatch", "regex/testregex",
-        "locale/tst-ctype", "tls/tst-tls16", "math/gamma",
-        "locale/tst-rpmatch")
+        "locale/tst-ctype", "tls/tst-tls16", "math/gamma")
 
 # tst-tls9-static dlopens, from a static program, modules that have
 # libc.so.0 in DT_NEEDED, as glibc's version does on purpose.  That loads a

@@ -76,6 +76,15 @@ if "NO_DL" in no:
         "tst-tls14", "tst-tls15", "tst-tls17", "tst-tls18", "tst-tls-at-ctor",
         "tst-tls1-pie", "tst-tls2-pie", "tst-tls3-pie", "tst-tls9-static")])
 
+# linuxthreads makes libc functions cancellation points only through the
+# wrappers in libpthread/linuxthreads/wrapsyscall.c, and 24 of the points
+# POSIX.1-2024 lists have none (poll, select, readv, clock_nanosleep, mq_*,
+# msgrcv, openat, sigwaitinfo, ...).  Measured on mips64 n32 2026-10-22: 24
+# of 56 checks fail.  linuxthreads stays for targets without NPTL and is not
+# made POSIX-complete here; the way out is NPTL on those targets.
+if is_set("UCLIBC_HAS_LINUXTHREADS"):
+    disable("pthread/cancellation-points")
+
 # POSIX AIO runs each request in a thread and exists only with NPTL.
 if not is_set("UCLIBC_HAS_THREADS_NATIVE"):
     disable(*["rt/" + t for t in (

@@ -16,6 +16,7 @@ EXTRA_CFLAGS    := -D__USE_GNU -fno-builtin
 
 OPTS_dump-ctype = C
 OPTS_tst-ctype = < tst-ctype-de_DE.ISO-8859-1.in
+WRAPPER_tst-ctype = env LC_ALL=de_DE.ISO-8859-1
 OPTS_tst-langinfo = < tst-langinfo.input
 
 EXTRA_DIRS := C

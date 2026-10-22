@@ -73,7 +73,12 @@ main (void)
   size_t reslinelen = 0;
   size_t n;
 
-  setlocale (LC_ALL, "");
+  /* The input describes de_DE.ISO-8859-1, which the Makefile sets.  */
+  if (setlocale (LC_ALL, "") == NULL)
+    {
+      puts ("SKIP: locale de_DE.ISO-8859-1 not available");
+      return 23;
+    }
 
   printf ("Testing the ctype data of the `%s' locale\n",
 	  setlocale (LC_CTYPE, NULL));

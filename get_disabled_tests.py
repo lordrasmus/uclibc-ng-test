@@ -134,15 +134,13 @@ disable("math/test-ldouble", "math/test-ildoubl")
 disable("unistd/tst-fallocate64", "unistd/tst-posix_fallocate64")
 
 # Fail, measured on x86_64 2026-10-22, causes being worked on:
-# - tst-strptime: tm_wday/tm_yday are not derived, fields without separators
-#   (%Y%m%d%H%M%S) are not read, %U/%W with %a are not used;
 # - tst-fnmatch, testregex: some of their cases fail;
 # - tst-ctype: the C locale ctype check fails;
 # - tst-tls16: dlopen succeeds where the static TLS space should not suffice;
 # - gamma: fails past the first cases;
 # - tst-rpmatch: rpmatch() only knows y/n and ignores the locale's
 #   YESEXPR/NOEXPR ("Ja" in de_DE gives -1).
-disable("time/tst-strptime", "misc/tst-fnmatch", "regex/testregex",
+disable("misc/tst-fnmatch", "regex/testregex",
         "locale/tst-ctype", "tls/tst-tls16", "math/gamma",
         "locale/tst-rpmatch")
 

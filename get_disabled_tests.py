@@ -140,14 +140,23 @@ disable("unistd/tst-fallocate64", "unistd/tst-posix_fallocate64")
 # - tst-ctype: the C locale ctype check fails;
 # - tst-tls16: dlopen succeeds where the static TLS space should not suffice;
 # - gamma: fails past the first cases;
-# - tst-tls9-static: dlopen of a module with TLS from a static program
-#   segfaults in the memcpy of the module's TLS init image, writing just
-#   past the heap (x86_64);
 # - tst-rpmatch: rpmatch() only knows y/n and ignores the locale's
 #   YESEXPR/NOEXPR ("Ja" in de_DE gives -1).
 disable("time/tst-strptime", "misc/tst-fnmatch", "regex/testregex",
         "locale/tst-ctype", "tls/tst-tls16", "math/gamma",
-        "locale/tst-rpmatch", "tls/tst-tls9-static")
+        "locale/tst-rpmatch")
+
+# tst-tls9-static dlopens, from a static program, modules that have
+# libc.so.0 in DT_NEEDED, as glibc's version does on purpose.  That loads a
+# second libc and its ld-uClibc.so into a process whose own libc is linked
+# in; the second one's __pthread_initialize_minimal calls through
+# _dl_error_catch_tsd, which only a started ld.so sets, and jumps to NULL.
+# Two libcs in one process (two mallocs, two errnos) are not supported;
+# glibc needs it for NSS and iconv modules in static programs, uClibc-ng has
+# both built in.  Plugins of a static program must not link libc.so.  The
+# static TLS part of this test, an initial-exec module in a static program,
+# works since uClibc-ng 90293cee2.
+disable("tls/tst-tls9-static")
 
 # kvx: binutils keeps one "GOT entry initialised" mark per symbol, not per
 # TLS model (bfd/elfnn-kvx.c, symbol_got_offset_mark).  When a symbol is

@@ -25,6 +25,15 @@ LDFLAGS_tst-tls1-pie := -pie
 LDFLAGS_tst-tls2-pie := -pie
 LDFLAGS_tst-tls3-pie := -pie tst-tlsmod1.so tst-tlsmod4.so
 
+# As in glibc, the -static variants are linked statically: TLS set up by
+# libc itself, without the loader, and tst-tls9-static dlopens from there.
+# Not where the target links -pie (noMMU ELF): -static would override it,
+# and the kernel loads only PIE there.
+TLS_STATIC := $(if $(filter -pie,$(LDFLAGS)),,-static)
+LDFLAGS_tst-tls1-static := $(TLS_STATIC)
+LDFLAGS_tst-tls2-static := $(TLS_STATIC)
+LDFLAGS_tst-tls9-static := $(TLS_STATIC) -ldl
+
 
 tlsmod17a-suffixes := 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19
 tlsmod18a-suffixes := 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19
@@ -124,6 +133,7 @@ tst-tls6: tst-tlsmod2.so
 tst-tls7: tst-tlsmod2.so tst-tlsmod3.so
 tst-tls8: tst-tlsmod2.so tst-tlsmod3.so tst-tlsmod4.so
 tst-tls9: tst-tlsmod5.so tst-tlsmod6.so
+tst-tls9-static: tst-tlsmod5.so tst-tlsmod6.so
 tst-tls10: tst-tlsmod7.so tst-tlsmod8.so
 tst-tls11: tst-tlsmod9.so tst-tlsmod10.so
 tst-tls12: tst-tlsmod11.so tst-tlsmod12.so

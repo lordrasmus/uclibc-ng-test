@@ -1,9 +1,11 @@
 # uClibc-ng realtime tests
 # Licensed under the LGPL v2.1, see the file COPYING.LIB in this tarball.
 
-LDFLAGS_tst-shm := -lrt
+EXTRA_LDFLAGS := -lrt
 
-# tst-aio*: from glibc's rt/, POSIX asynchronous I/O
-EXTRA_LDFLAGS := -lrt -lpthread
+# tst-aio*: from glibc's rt/, POSIX asynchronous I/O.  Only these use
+# threads; there is no libpthread on targets without them.
+$(foreach t,tst-aio tst-aio2 tst-aio3 tst-aio5 tst-aio6 tst-aio7 tst-aio8 \
+	tst-aio9 tst-aio10 tst-aio64,$(eval LDFLAGS_$(t) := -lpthread))
 
 OPTS_tst-posix_spawn := ls

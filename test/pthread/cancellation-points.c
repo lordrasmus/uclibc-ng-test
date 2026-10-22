@@ -13,6 +13,7 @@
 #include <sys/msg.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/uio.h>
 #include <sys/wait.h>
 #include <fcntl.h>
 #include <mqueue.h>
@@ -28,22 +29,11 @@
 #include <unistd.h>
 
 /* take care of optional things ... */
-#define STUB(func, args) static void func args { sleep(0); }
-#if defined(__UCLIBC_AIO__)
-# include <aio.h>
-#else
-STUB(aio_suspend, (void *p, int n, const void *p2))
-#endif
-#if defined(__UCLIBC_STROPTS__)
-# include <stropts.h>
-#else
-STUB(getmsg, (int f, void *p, void *p2, void *p3))
-STUB(getpmsg, (int f, void *p, void *p2, void *p3, void *p4))
-STUB(putmsg, (int f, void *p, void *p2, void *p3))
-STUB(putpmsg, (int f, void *p, void *p2, void *p3, void *p4))
-#endif
-#if defined(__UCLIBC__)
-STUB(clock_nanosleep, (int i, int f, const void *p, void *p2))
+#if defined __has_include
+# if __has_include(<aio.h>)
+#  include <aio.h>
+#  define HAVE_AIO 1
+# endif
 #endif
 
 int cnt;
@@ -59,6 +49,7 @@ void cancel_thread_cleanup(void *arg)
 }
 
 /* some funcs need some help as they wont take NULL args ... */
+char mq_buf[1];
 const struct timespec zero_sec = { .tv_sec = 0, .tv_nsec = 0 };
 
 sem_t sem;
@@ -68,6 +59,44 @@ void help_sem_setup(void)
 		perror("sem_init() failed");
 		exit(-1);
 	}
+}
+
+/* lockf is a cancellation point with F_LOCK only, so it needs a real file */
+int lockf_fd;
+void help_lockf_setup(void)
+{
+	char name[] = "/tmp/cancellation-points.XXXXXX";
+
+	lockf_fd = mkstemp(name);
+	if (lockf_fd == -1) {
+		perror("mkstemp() failed");
+		exit(-1);
+	}
+	unlink(name);
+}
+
+/* pthread_join needs a thread that never ends */
+pthread_t join_target;
+void *join_target_func(void *arg)
+{
+	for (;;)
+		pause();
+	return arg;
+}
+void help_join_setup(void)
+{
+	if (pthread_create(&join_target, NULL, join_target_func, NULL)) {
+		perror("pthread_create() failed");
+		exit(-1);
+	}
+}
+
+/* the sigwait family must not get a NULL set; an empty one blocks */
+sigset_t empty_set;
+int sig_out;
+void help_sigset_setup(void)
+{
+	sigemptyset(&empty_set);
 }
 
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
@@ -99,7 +128,24 @@ void *cancel_thread_##func(void *arg) \
 #define MAKE_CANCEL_THREAD_FUNC(func, args)             _MAKE_CANCEL_THREAD_FUNC_EX(func, func, args, (void)0)
 
 MAKE_CANCEL_THREAD_FUNC(accept, (-1, NULL, NULL))
-MAKE_CANCEL_THREAD_FUNC(aio_suspend, (NULL, 0, &zero_sec))
+MAKE_CANCEL_THREAD_FUNC(accept4, (-1, NULL, NULL, 0))
+#ifdef HAVE_AIO
+/* an aio_read on an empty pipe never completes, so aio_suspend blocks */
+struct aiocb aio_cb;
+const struct aiocb *aio_list[1] = { &aio_cb };
+char aio_buf[1];
+void help_aio_setup(void)
+{
+	int fds[2];
+
+	if (pipe(fds) || (aio_cb.aio_fildes = fds[0], aio_cb.aio_buf = aio_buf,
+			  aio_cb.aio_nbytes = 1, aio_read(&aio_cb))) {
+		perror("aio_read() setup failed");
+		exit(-1);
+	}
+}
+MAKE_CANCEL_THREAD_FUNC_EX(aio_suspend, (aio_list, 1, NULL), help_aio_setup())
+#endif
 MAKE_CANCEL_THREAD_FUNC(clock_nanosleep, (0, 0, NULL, NULL))
 MAKE_CANCEL_THREAD_FUNC(close, (-1))
 MAKE_CANCEL_THREAD_FUNC(connect, (-1, NULL, 0))
@@ -107,28 +153,26 @@ MAKE_CANCEL_THREAD_FUNC(creat, ("", 0))
 MAKE_CANCEL_THREAD_FUNC(fcntl, (0, F_SETLKW, NULL))
 MAKE_CANCEL_THREAD_FUNC(fdatasync, (-1))
 MAKE_CANCEL_THREAD_FUNC(fsync, (0))
-MAKE_CANCEL_THREAD_FUNC(getmsg, (-1, NULL, NULL, NULL))
-MAKE_CANCEL_THREAD_FUNC(getpmsg, (-1, NULL, NULL, NULL, NULL))
-MAKE_CANCEL_THREAD_FUNC(lockf, (-1, F_TEST, 0))
-MAKE_CANCEL_THREAD_FUNC(mq_receive, (0, NULL, 0, NULL))
-MAKE_CANCEL_THREAD_FUNC(mq_send, (0, NULL, 0, 0))
-MAKE_CANCEL_THREAD_FUNC(mq_timedreceive, (0, NULL, 0, NULL, NULL))
-MAKE_CANCEL_THREAD_FUNC(mq_timedsend, (0, NULL, 0, 0, NULL))
+MAKE_CANCEL_THREAD_FUNC_EX(lockf, (lockf_fd, F_LOCK, 0), help_lockf_setup())
+MAKE_CANCEL_THREAD_FUNC(mq_receive, (0, mq_buf, sizeof(mq_buf), NULL))
+MAKE_CANCEL_THREAD_FUNC(mq_send, (0, mq_buf, 0, 0))
+MAKE_CANCEL_THREAD_FUNC(mq_timedreceive, (0, mq_buf, sizeof(mq_buf), NULL, &zero_sec))
+MAKE_CANCEL_THREAD_FUNC(mq_timedsend, (0, mq_buf, 0, 0, &zero_sec))
 MAKE_CANCEL_THREAD_FUNC(msgrcv, (-1, NULL, 0, 0, 0))
 MAKE_CANCEL_THREAD_FUNC(msgsnd, (-1, NULL, 0, 0))
 MAKE_CANCEL_THREAD_FUNC(msync, (NULL, 0, 0))
 MAKE_CANCEL_THREAD_FUNC(nanosleep, (NULL, NULL))
 MAKE_CANCEL_THREAD_FUNC(open, ("", 0))
+MAKE_CANCEL_THREAD_FUNC(openat, (AT_FDCWD, "", 0))
 MAKE_CANCEL_THREAD_FUNC(pause, ())
 MAKE_CANCEL_THREAD_FUNC(poll, (NULL, 0, 0))
+MAKE_CANCEL_THREAD_FUNC(ppoll, (NULL, 0, &zero_sec, NULL))
 MAKE_CANCEL_THREAD_FUNC(pread, (-1, NULL, 0, 0))
 MAKE_CANCEL_THREAD_FUNC(pselect, (0, NULL, NULL, NULL, NULL, NULL))
 MAKE_CANCEL_THREAD_FUNC_EX(pthread_cond_timedwait, (&cond, &mutex, &zero_sec), help_pthread_setup())
 MAKE_CANCEL_THREAD_FUNC_EX(pthread_cond_wait, (&cond, &mutex), help_pthread_setup())
-/*MAKE_CANCEL_THREAD_FUNC_EX(pthread_join, (0, NULL))*/
+MAKE_CANCEL_THREAD_FUNC_EX(pthread_join, (join_target, NULL), help_join_setup())
 MAKE_CANCEL_THREAD_FUNC(pthread_testcancel, ())
-MAKE_CANCEL_THREAD_FUNC(putmsg, (-1, NULL, NULL, 0))
-MAKE_CANCEL_THREAD_FUNC(putpmsg, (-1, NULL, NULL, 0, 0))
 MAKE_CANCEL_THREAD_FUNC(pwrite, (-1, NULL, 0, 0))
 MAKE_CANCEL_THREAD_FUNC(read, (-1, NULL, 0))
 MAKE_CANCEL_THREAD_FUNC(readv, (-1, NULL, 0))
@@ -144,10 +188,10 @@ MAKE_CANCEL_THREAD_FUNC(sendto, (-1, NULL, 0, 0, NULL, 0))
 #ifdef __UCLIBC_SUSV4_LEGACY__
 MAKE_CANCEL_THREAD_FUNC(sigpause, (0))
 #endif
-MAKE_CANCEL_THREAD_FUNC(sigsuspend, (NULL))
-MAKE_CANCEL_THREAD_FUNC(sigtimedwait, (NULL, NULL, NULL))
-MAKE_CANCEL_THREAD_FUNC(sigwait, (NULL, NULL))
-MAKE_CANCEL_THREAD_FUNC(sigwaitinfo, (NULL, NULL))
+MAKE_CANCEL_THREAD_FUNC_EX(sigsuspend, (&empty_set), help_sigset_setup())
+MAKE_CANCEL_THREAD_FUNC_EX(sigtimedwait, (&empty_set, NULL, &zero_sec), help_sigset_setup())
+MAKE_CANCEL_THREAD_FUNC_EX(sigwait, (&empty_set, &sig_out), help_sigset_setup())
+MAKE_CANCEL_THREAD_FUNC_EX(sigwaitinfo, (&empty_set, NULL), help_sigset_setup())
 MAKE_CANCEL_THREAD_FUNC(sleep, (0))
 MAKE_CANCEL_THREAD_FUNC(system, (""))
 MAKE_CANCEL_THREAD_FUNC(tcdrain, (-1))
@@ -218,7 +262,12 @@ int main(int argc, char *argv[])
 	cnt = 0;
 
 	ret += TEST_FUNC(accept);
+	ret += TEST_FUNC(accept4);
+#ifdef HAVE_AIO
 	ret += TEST_FUNC(aio_suspend);
+#else
+	printf("SKIP: aio_suspend: no POSIX asynchronous I/O\n");
+#endif
 	ret += TEST_FUNC(clock_nanosleep);
 	ret += TEST_FUNC(close);
 	ret += TEST_FUNC(connect);
@@ -226,8 +275,6 @@ int main(int argc, char *argv[])
 	ret += TEST_FUNC(fcntl);
 	ret += TEST_FUNC(fdatasync);
 	ret += TEST_FUNC(fsync);
-	ret += TEST_FUNC(getmsg);
-	ret += TEST_FUNC(getpmsg);
 	ret += TEST_FUNC(lockf);
 	ret += TEST_FUNC(mq_receive);
 	ret += TEST_FUNC(mq_send);
@@ -238,16 +285,16 @@ int main(int argc, char *argv[])
 	ret += TEST_FUNC(msync);
 	ret += TEST_FUNC(nanosleep);
 	ret += TEST_FUNC(open);
+	ret += TEST_FUNC(openat);
 	ret += TEST_FUNC(pause);
 	ret += TEST_FUNC(poll);
+	ret += TEST_FUNC(ppoll);
 	ret += TEST_FUNC(pread);
 	ret += TEST_FUNC(pselect);
 	ret += TEST_FUNC(pthread_cond_timedwait);
 	ret += TEST_FUNC(pthread_cond_wait);
-	/*ret += TEST_FUNC(pthread_join);*/
+	ret += TEST_FUNC(pthread_join);
 	ret += TEST_FUNC(pthread_testcancel);
-	ret += TEST_FUNC(putmsg);
-	ret += TEST_FUNC(putpmsg);
 	ret += TEST_FUNC(pwrite);
 	ret += TEST_FUNC(read);
 	ret += TEST_FUNC(readv);
@@ -260,7 +307,9 @@ int main(int argc, char *argv[])
 	ret += TEST_FUNC(send);
 	ret += TEST_FUNC(sendmsg);
 	ret += TEST_FUNC(sendto);
+#ifdef __UCLIBC_SUSV4_LEGACY__
 	ret += TEST_FUNC(sigpause);
+#endif
 	ret += TEST_FUNC(sigsuspend);
 	ret += TEST_FUNC(sigtimedwait);
 	ret += TEST_FUNC(sigwait);

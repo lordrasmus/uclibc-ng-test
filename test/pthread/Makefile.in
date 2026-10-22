@@ -4,7 +4,6 @@
 # build every test additionally at -O2 (see Test.mak)
 O2_TWINS := 1
 
-TESTS_DISABLED += cancellation-points
 
 EXTRA_LDFLAGS := -lpthread
 

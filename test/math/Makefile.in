@@ -15,6 +15,11 @@ DODIFF_signgam  := 1
 
 # NOTE: For basic-test we must disable the floating point optimization.
 #       Only for sh architecture because in the other architecture are disabled.
+# alpha encodes the rounding mode in each instruction and reports inexact only
+# when asked to; tst-fenv checks that arithmetic follows fesetround.
+ifeq ($(TARGET_ARCH),alpha)
+CFLAGS_tst-fenv += -mieee-with-inexact -mfp-rounding-mode=d
+endif
 ifeq ($(TARGET_ARCH),sh)
 CFLAGS_basic-test += -mieee
 endif

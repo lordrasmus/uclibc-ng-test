@@ -15,7 +15,7 @@ TESTS := tst_iswalnum tst_iswalpha tst_iswcntrl          \
 	 tst_wcstod tst_wcstok tst_wcstombs tst_wcswidth \
 	 tst_wcsxfrm tst_wctob tst_wctomb tst_wctrans    \
 	 tst_wctype tst_wcwidth tst_strfmon \
-	 tst2_mbrtowc
+	 tst2_mbrtowc tst-uchar
 
 # From libc-test, see ../libc-test.h.
 TESTS += clocale_mbfuncs mbc wcstol fwscanf

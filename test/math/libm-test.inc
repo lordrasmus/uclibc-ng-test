@@ -3241,6 +3241,8 @@ rint_test_towardzero (void)
 
   save_round_mode = fegetround();
 
+  /* A mode the target cannot select has no macro (C99 7.6).  */
+#ifdef FE_TOWARDZERO
   if (!fesetround (FE_TOWARDZERO))
   {
     TEST_f_f (rint, 2.0, 2.0);
@@ -3254,6 +3256,7 @@ rint_test_towardzero (void)
     TEST_f_f (rint, -1.5, -1.0);
     TEST_f_f (rint, -2.0, -2.0);
   }
+#endif
 
   fesetround(save_round_mode);
 
@@ -3268,6 +3271,7 @@ rint_test_downward (void)
 
   save_round_mode = fegetround();
 
+#ifdef FE_DOWNWARD
   if (!fesetround (FE_DOWNWARD))
   {
     TEST_f_f (rint, 2.0, 2.0);
@@ -3281,6 +3285,7 @@ rint_test_downward (void)
     TEST_f_f (rint, -1.5, -2.0);
     TEST_f_f (rint, -2.0, -2.0);
   }
+#endif
 
   fesetround(save_round_mode);
 
@@ -3295,6 +3300,7 @@ rint_test_upward (void)
 
   save_round_mode = fegetround();
 
+#ifdef FE_UPWARD
   if (!fesetround (FE_UPWARD))
   {
     TEST_f_f (rint, 2.0, 2.0);
@@ -3308,6 +3314,7 @@ rint_test_upward (void)
     TEST_f_f (rint, -1.5, -1.0);
     TEST_f_f (rint, -2.0, -2.0);
   }
+#endif
 
   fesetround(save_round_mode);
 

@@ -6,8 +6,10 @@
 # were disabled on every target.
 
 CFLAGS_tst-strptime2 := -std=c99
-# strict C11: <time.h> must give it struct timespec and timespec_get
-CFLAGS_tst-timespec_get := -U_GNU_SOURCE -std=c11
+# ISO C11 only: <time.h> must give it struct timespec and timespec_get.
+# Asked for with the feature macro, not -std=c11, which gcc before 4.6
+# does not know (avr32).
+CFLAGS_tst-timespec_get := -U_GNU_SOURCE -D_ISOC11_SOURCE
 # ISO C23 only
 CFLAGS_tst-timespec_getres := -U_GNU_SOURCE -D_ISOC23_SOURCE
 

@@ -26,7 +26,7 @@
 
 static pthread_barrier_t* b = NULL;
 
-#define TCB_ALIGNMENT 16
+#include "tst-tls3-align.h"
 
 #define TOTAL_SIGS 1000
 static int* nsigs = NULL;

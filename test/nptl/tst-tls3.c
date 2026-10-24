@@ -69,7 +69,7 @@ pthread_barrier_t b;
 #define TOTAL_SIGS 1000
 int nsigs;
 
-#define TCB_ALIGNMENT 16
+#include "tst-tls3-align.h"
 
 int
 do_test (void)

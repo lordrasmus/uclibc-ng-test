@@ -2,10 +2,11 @@
 #
 # What of the test suite does not run against a given C library.
 #
-#   CC=<compiler> CFLAGS=<flags> TARGET_ARCH=<arch> get_disabled_tests.py
+#   CC=<compiler> CFLAGS=<flags> LDFLAGS=<flags> TARGET_ARCH=<arch> \
+#       get_disabled_tests.py
 #
-# test/Makefile calls it with its own CC, CFLAGS and TARGET_ARCH; it prints
-# make variables for test/Makefile and test/Test.mak:
+# test/Makefile calls it with its own CC, CFLAGS, LDFLAGS and TARGET_ARCH;
+# it prints make variables for test/Makefile and test/Test.mak:
 #
 #   NO_TLS=1 NO_DL=1 ...                  whole directories (test/Makefile)
 #   DISABLED_TESTS=nptl/tst-foo,misc/bar  single tests, dir/name, comma
@@ -48,6 +49,18 @@ def macros():
         if len(f) >= 2 and f[0] == "#define":
             m[f[1]] = f[2] if len(f) > 2 else ""
     return m
+
+def links_pie():
+    """Whether toolchain and libc can link a PIE: a PIC Scrt1.o and a linker
+    that produces ET_DYN executables."""
+    cc = shlex.split(os.environ.get("CC", "gcc"))
+    flags = (shlex.split(os.environ.get("CFLAGS", ""))
+             + shlex.split(os.environ.get("LDFLAGS", "")))
+    r = subprocess.run(cc + flags + ["-fPIE", "-pie", "-x", "c", "-",
+                                     "-o", os.devnull],
+                       input="int main(void){return 0;}\n",
+                       capture_output=True, text=True)
+    return r.returncode == 0
 
 defined = macros()
 
@@ -103,6 +116,11 @@ if libc == "glibc":
     no.add("NO_CRYPT")
 if libc == "musl":
     no.add("NO_MATH")
+
+# The *-pie variants, wherever a PIE cannot be linked (microblaze: non-PIC
+# Scrt1.o plus a BFD assertion on the attempt).
+if not links_pie():
+    no.add("NO_PIE")
 
 # math/ ran nowhere since 79524cb ("github always set NO_MATH for now", 2023-11-21),
 # and SH2 and alpha had been exempted two days before that in c189229; neither commit

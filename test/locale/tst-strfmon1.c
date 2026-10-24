@@ -10,9 +10,10 @@ static const struct
 } tests[] =
   {
     { "de_DE.ISO-8859-1", "|-12,34 EUR|-12,34|" },
-    { "da_DK.ISO-8859-1", "|kr -12,34|-12,34|" },
-    { "zh_TW.EUC-TW", "|-NT$12.34|-12.34|" },
-    { "sv_SE.ISO-8859-1", "|-12,34 kr|-12,34|" }
+    { "da_DK.ISO-8859-1", "|kr. -12,34|-12,34|" },
+    { "zh_TW.UTF-8", "|-NT$12.34|-12.34|" },
+    { "sv_SE.ISO-8859-1", "|-12,34 kr|-12,34|" },
+    { "nl_NL.UTF-8", "|\342\202\254 -12,34|-12,34|" }
   };
 #define ntests (sizeof (tests) / sizeof (tests[0]))
 

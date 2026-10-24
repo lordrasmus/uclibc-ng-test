@@ -164,10 +164,14 @@ if uclibc and not is_set("UCLIBC_HAS_XLOCALE"):
     disable("locale/tst-xlocale1", "locale/tst-xlocale2",
             "locale/bug-usesetlocale")
 
-# uClibc-ng has no strfmon() and no <monetary.h> yet; on until it has.
-if uclibc:
-    disable("locale/tst-fmon", "locale/tst-strfmon1",
-            "locale-mbwc/tst_strfmon")
+# strfmon() and <monetary.h> exist only with UCLIBC_HAS_FLOATS.
+if uclibc and not is_set("UCLIBC_HAS_FLOATS"):
+    disable("locale/tst-strfmon1", "locale-mbwc/tst_strfmon")
+
+# tst-fmon is a driver: it takes locale, format, value and the expected
+# string as arguments.  glibc feeds it from tst-fmon.data through
+# tst-fmon.sh; neither is here, and run without arguments it crashes.
+disable("locale/tst-fmon")
 
 # Need files the rootfs does not carry.  collate-test and xfrm-test take a
 # random seed and a word list on stdin and are judged against a reference

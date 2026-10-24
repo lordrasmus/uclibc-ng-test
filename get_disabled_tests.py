@@ -1,37 +1,75 @@
 #!/usr/bin/python3
 #
-# What of the test suite does not run against a given uClibc-ng build.
+# What of the test suite does not run against a given C library.
 #
-#   get_disabled_tests.py <uClibc-ng .config>
+#   CC=<compiler> CFLAGS=<flags> TARGET_ARCH=<arch> get_disabled_tests.py
 #
-# prints make variables for test/Makefile and test/Test.mak:
+# test/Makefile calls it with its own CC, CFLAGS and TARGET_ARCH; it prints
+# make variables for test/Makefile and test/Test.mak:
 #
 #   NO_TLS=1 NO_DL=1 ...                  whole directories (test/Makefile)
 #   DISABLED_TESTS=nptl/tst-foo,misc/bar  single tests, dir/name, comma
 #                                         separated so "export $(...)" keeps
 #                                         it in one word (test/Test.mak)
 #
-# This is the one place that decides it.  The makefiles used to carry their
-# own ifeq blocks on TARGET_ARCH and on uClibc options -- and since the suite
-# never reads the .config, the latter were always empty and fired on every
-# target.  A test that can find out for itself whether it applies (features.h,
-# sysconf, a probe) skips itself instead; what is here cannot.
+# This is the one place that decides it.  It asks the compiler rather than
+# reading a .config: the predefined macros after <features.h> say which C
+# library the tests are built against, and for uClibc-ng
+# bits/uClibc_config.h carries every option as __<OPTION>__.  So the answer
+# is about the library that is actually linked, and the same call works for
+# glibc and musl.  A test that can find out for itself whether it applies
+# (features.h, sysconf, a probe) skips itself instead; what is here cannot.
 
+import os
+import shlex
+import subprocess
 import sys
 
-values = {}
-with open(sys.argv[1], 'r') as config_file:
-    for l in config_file:
-        if l.startswith("#") or "=" not in l:
-            continue
-        k, v = l.rstrip("\n").split("=", 1)
-        values[k] = v.replace("\"", "")
+# The .config argument of earlier versions is refused rather than ignored:
+# a caller that still passes one would otherwise get the answer for
+# whatever "gcc" is on its PATH.
+if len(sys.argv) > 1:
+    sys.exit("get_disabled_tests.py takes no arguments; set CC and CFLAGS")
+
+def macros():
+    cc = shlex.split(os.environ.get("CC", "gcc"))
+    flags = shlex.split(os.environ.get("CFLAGS", ""))
+    # <sys/types.h> for musl, which has no macro of its own; its
+    # bits/alltypes.h leaves __DEFINED_size_t behind
+    src = "#include <features.h>\n#include <sys/types.h>\n"
+    r = subprocess.run(cc + flags + ["-dM", "-E", "-x", "c", "-"],
+                       input=src, capture_output=True, text=True)
+    if r.returncode != 0:
+        sys.stderr.write(r.stderr)
+        sys.exit("get_disabled_tests.py: cannot run " + " ".join(cc))
+    m = {}
+    for l in r.stdout.splitlines():
+        f = l.split(None, 2)
+        if len(f) >= 2 and f[0] == "#define":
+            m[f[1]] = f[2] if len(f) > 2 else ""
+    return m
+
+defined = macros()
+
+# uClibc-ng defines __GLIBC__ too, so it is asked first
+if "__UCLIBC__" in defined:
+    libc = "uclibc"
+elif "__GLIBC__" in defined:
+    libc = "glibc"
+elif "__DEFINED_size_t" in defined:
+    libc = "musl"
+else:
+    libc = "unknown"
+
+uclibc = libc == "uclibc"
 
 def is_set(option):
-    return values.get(option) == "y"
+    """A uClibc-ng option, as bits/uClibc_config.h has it."""
+    return "__" + option + "__" in defined
 
 def arch(name):
-    return is_set("TARGET_" + name)
+    """TARGET_ARCH as test/Rules.mak derives it from $(CC) -dumpmachine."""
+    return os.environ.get("TARGET_ARCH", "") == name
 
 no = set()
 tests = []
@@ -42,17 +80,29 @@ def disable(*names):
 
 # --- whole directories ----------------------------------------------------
 
-if not is_set("UCLIBC_HAS_LOCALE"):
-    no.add("NO_LOCALE")
-if not is_set("HAVE_SHARED") or is_set("ARCH_HAS_NO_SHARED"):
-    no.add("NO_DL")
-if not is_set("UCLIBC_HAS_WCHAR"):
-    no.add("NO_WCHAR")
+# For uClibc-ng the options say it.  glibc and musl always have locales,
+# wide characters, threads and TLS; whether a static-only build has dlopen
+# is not visible here, a caller sets NO_DL=1 for that.
+if uclibc:
+    if not is_set("UCLIBC_HAS_LOCALE"):
+        no.add("NO_LOCALE")
+    if not is_set("HAVE_SHARED") or is_set("ARCH_HAS_NO_SHARED"):
+        no.add("NO_DL")
+    if not is_set("UCLIBC_HAS_WCHAR"):
+        no.add("NO_WCHAR")
 
-if is_set("HAS_NO_THREADS"):
-    no.update(["NO_THREADS", "NO_NPTL", "NO_TLS"])
-if is_set("UCLIBC_HAS_LINUXTHREADS"):
-    no.update(["NO_NPTL", "NO_TLS"])
+    if is_set("HAS_NO_THREADS"):
+        no.update(["NO_THREADS", "NO_NPTL", "NO_TLS"])
+    if is_set("UCLIBC_HAS_LINUXTHREADS"):
+        no.update(["NO_NPTL", "NO_TLS"])
+
+# Both from openadk's package/uclibc-ng-test/Makefile, which sets them
+# without a reason; taken over so that it need not set them itself.  Not
+# measured here -- to be pruned by a run, not by guessing.
+if libc == "glibc":
+    no.add("NO_CRYPT")
+if libc == "musl":
+    no.add("NO_MATH")
 
 # math/ ran nowhere since 79524cb ("github always set NO_MATH for now", 2023-11-21),
 # and SH2 and alpha had been exempted two days before that in c189229; neither commit
@@ -82,22 +132,24 @@ if "NO_DL" in no:
 # msgrcv, openat, sigwaitinfo, ...).  Measured on mips64 n32 2026-10-22: 24
 # of 56 checks fail.  linuxthreads stays for targets without NPTL and is not
 # made POSIX-complete here; the way out is NPTL on those targets.
-if is_set("UCLIBC_HAS_LINUXTHREADS"):
+if uclibc and is_set("UCLIBC_HAS_LINUXTHREADS"):
     disable("pthread/cancellation-points")
 
 # POSIX AIO runs each request in a thread and exists only with NPTL.
-if not is_set("UCLIBC_HAS_THREADS_NATIVE"):
+if uclibc and not is_set("UCLIBC_HAS_THREADS_NATIVE"):
     disable(*["rt/" + t for t in (
         "tst-aio", "tst-aio2", "tst-aio3", "tst-aio5", "tst-aio6", "tst-aio7",
         "tst-aio8", "tst-aio9", "tst-aio10", "tst-aio64")])
 
 # locale_t, newlocale() and uselocale() exist only with UCLIBC_HAS_XLOCALE.
-if not is_set("UCLIBC_HAS_XLOCALE"):
+if uclibc and not is_set("UCLIBC_HAS_XLOCALE"):
     disable("locale/tst-xlocale1", "locale/tst-xlocale2",
             "locale/bug-usesetlocale")
 
 # uClibc-ng has no strfmon() and no <monetary.h> yet; on until it has.
-disable("locale/tst-fmon", "locale/tst-strfmon1", "locale-mbwc/tst_strfmon")
+if uclibc:
+    disable("locale/tst-fmon", "locale/tst-strfmon1",
+            "locale-mbwc/tst_strfmon")
 
 # Need files the rootfs does not carry.  collate-test and xfrm-test take a
 # random seed and a word list on stdin and are judged against a reference
@@ -110,24 +162,28 @@ disable("locale/collate-test", "locale/xfrm-test", "locale/tst-digits",
 # uClibc-ng reads POSIX TZ strings from TZ or /etc/TZ and has no zoneinfo
 # reader; tst-timezone needs named zones (Europe/Amsterdam).  tst-posixtz
 # covers what applies.
-disable("time/tst-timezone")
+if uclibc:
+    disable("time/tst-timezone")
 
 # glibc extensions, not POSIX: iconv's //TRANSLIT suffix (bug-iconv-trans),
 # the ja_JP character classes jhira, jkata, jdigit, jspace and jkanji
 # (tst-wctype), scanf's "%I" for locale digits (tst-sscanf), and strftime's
 # "-" flag and field widths such as %2000Y (tst-strftime).
-disable("locale/bug-iconv-trans", "locale/tst-wctype", "locale/tst-sscanf",
-        "time/tst-strftime")
+if libc != "glibc":
+    disable("locale/bug-iconv-trans", "locale/tst-wctype",
+            "locale/tst-sscanf", "time/tst-strftime")
 
 # For a year that does not fit, asctime() and asctime_r() write "????" and
 # return the buffer (SAFE_ASCTIME_R in libc/misc/time/time.c) where glibc
 # fails with EOVERFLOW.  Deliberate, and stated in both test files.
-disable("time/bug-asctime", "time/bug-asctime_r")
+if uclibc:
+    disable("time/bug-asctime", "time/bug-asctime_r")
 
 # long double is a wrapper around double in libm (ldouble_wrappers.c), so
 # results lose their low mantissa bits wherever LDBL_MANT_DIG > 53: on i686
 # 111 errors of that one cause.  On when long double is done per format.
-disable("math/test-ldouble", "math/test-ildoubl")
+if uclibc:
+    disable("math/test-ldouble", "math/test-ildoubl")
 
 # tst-fallocate64 and tst-posix_fallocate64 allocate past 4 GiB; the rootfs
 # is a tmpfs in guest RAM.
@@ -136,7 +192,8 @@ disable("unistd/tst-fallocate64", "unistd/tst-posix_fallocate64")
 # Fail, measured on x86_64 2026-10-22, causes being worked on:
 # - tst-tls16: dlopen succeeds where the static TLS space should not suffice;
 # - gamma: fails past the first cases.
-disable("tls/tst-tls16", "math/gamma")
+if uclibc:
+    disable("tls/tst-tls16", "math/gamma")
 
 # tst-tls9-static dlopens, from a static program, modules that have
 # libc.so.0 in DT_NEEDED, as glibc's version does on purpose.  That loads a
@@ -148,7 +205,8 @@ disable("tls/tst-tls16", "math/gamma")
 # both built in.  Plugins of a static program must not link libc.so.  The
 # static TLS part of this test, an initial-exec module in a static program,
 # works since uClibc-ng 90293cee2.
-disable("tls/tst-tls9-static")
+if uclibc:
+    disable("tls/tst-tls9-static")
 
 # kvx: binutils keeps one "GOT entry initialised" mark per symbol, not per
 # TLS model (bfd/elfnn-kvx.c, symbol_got_offset_mark).  When a symbol is

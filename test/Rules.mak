@@ -29,6 +29,7 @@ TARGET_ARCH:=$(shell $(CC) -dumpmachine | sed -e s'/-.*//' \
 	-e 's/mips.*/mips/' \
 	-e 's/cris.*/cris/' \
 	-e 's/xtensa.*/xtensa/' \
+	-e 's/tic6x/c6x/' \
 	)
 endif
 export TARGET_ARCH
@@ -57,6 +58,12 @@ HOST_CFLAGS    += $(XCOMMON_CFLAGS) -Os $(XWARNINGS) -std=gnu99
 # builds itself that way (CPU_CFLAGS-y in its Rules.mak); the tests must match.
 ifeq ($(TARGET_ARCH),alpha)
 CFLAGS += -mieee
+endif
+
+# gcc turns on -freciprocal-math for c6x, which makes 1.0/0.0 a NaN;
+# uClibc-ng builds without it, and so must the tests.
+ifeq ($(TARGET_ARCH),c6x)
+CFLAGS += -fno-reciprocal-math
 endif
 
 ifneq ($(strip $(UCLIBC_EXTRA_CFLAGS)),"")

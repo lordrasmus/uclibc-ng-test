@@ -142,6 +142,7 @@ if "NO_DL" in no:
         "tst-tls3", "tst-tls4", "tst-tls5", "tst-tls6", "tst-tls7", "tst-tls8",
         "tst-tls9", "tst-tls10", "tst-tls11", "tst-tls12", "tst-tls13",
         "tst-tls14", "tst-tls15", "tst-tls17", "tst-tls18", "tst-tls-at-ctor",
+        "tst-tls-ie-many",
         "tst-tls1-pie", "tst-tls2-pie", "tst-tls3-pie", "tst-tls9-static")])
 
 # linuxthreads makes libc functions cancellation points only through the

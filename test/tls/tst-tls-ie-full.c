@@ -12,6 +12,14 @@
 
 #define EXTRA "131072"
 
+/* microblaze gcc emits general-dynamic even for tls_model
+   ("initial-exec"), so the library needs no static TLS there.  */
+#ifdef __microblaze__
+# define NO_INITIAL_EXEC 1
+#else
+# define NO_INITIAL_EXEC 0
+#endif
+
 int
 main (int argc, char **argv)
 {
@@ -20,12 +28,18 @@ main (int argc, char **argv)
   if (getenv ("LD_STATIC_TLS_EXTRA") == NULL)
     {
       h = dlopen ("tst-tlsmod-ie-big.so", RTLD_NOW);
-      if (h != NULL)
+      if (h != NULL && NO_INITIAL_EXEC)
+	{
+	  puts ("skipped: the compiler emits no initial-exec TLS");
+	  dlclose (h);
+	}
+      else if (h != NULL)
 	{
 	  puts ("dlopen of a library whose TLS does not fit succeeded");
 	  return 1;
 	}
-      printf ("dlopen failed as it should: %s\n", dlerror ());
+      else
+	printf ("dlopen failed as it should: %s\n", dlerror ());
 
       /* The program goes on, and can still load what fits.  */
       h = dlopen ("tst-tlsmod-ie0.so", RTLD_NOW);

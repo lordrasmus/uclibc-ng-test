@@ -245,6 +245,16 @@ if arch("kvx"):
             "tls/tst-tls2", "tls/tst-tls2-pie", "tls/tst-tls2-static",
             "tls/tst-tls3", "tls/tst-tls3-pie")
 
+# metag: the linker turns down a general or local dynamic TLS access in a
+# static link ("shared library symbol foo encountered whilst performing a
+# static link", binutils 2.47 from openadk) instead of relaxing it to local
+# exec.  tst-tls1-static and tst-tls2-static use those models on purpose.
+# And gcc 4.2.4 stops with an internal compiler error on tst-cleanup0.c at
+# -O2 with -fexceptions (calc_dfs_tree, dominance.c:373); -O0 builds.
+if arch("metag"):
+    disable("tls/tst-tls1-static", "tls/tst-tls2-static",
+            "nptl/tst-cleanupx0-O2")
+
 
 out = [n + "=1" for n in sorted(no)]
 if tests:

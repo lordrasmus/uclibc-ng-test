@@ -24,7 +24,7 @@ TESTS := tst-align tst-align2 tst-atfork1 tst-attr1 tst-attr2 tst-attr3	\
 	tst-cancel8 tst-cancel9 tst-cancel10 tst-cancel11 tst-cancel12	\
 	tst-cancel13 tst-cancel14 tst-cancel15 tst-cancel16		\
 	tst-cancel19 tst-cancel20 tst-cancel21 tst-cancel22		\
-	tst-cleanup0 tst-cleanup1 tst-cleanup2 tst-cleanup3		\
+	tst-cleanup0 tst-cleanup1 tst-cleanup2 tst-cleanup3 tst-cleanup-longjmp \
 	tst-cleanup4 tst-clock1 tst-clock2 tst-cond1 tst-cond2		\
 	tst-cond3 tst-cond4 tst-cond5 tst-cond6 tst-cond7 tst-cond8	\
 	tst-cond9 tst-cond10 tst-cond11 tst-cond12 tst-cond13		\

@@ -35,7 +35,7 @@ int main(void)
 		perror("Stat failed");
 		exit(1);
 	}
-	ethers = mmap(NULL, statb.st_size, PROT_READ, MAP_SHARED, fd, 0);
+	ethers = mmap(NULL, statb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
 
 	if (ethers == MAP_FAILED) {
 		perror("File mapping failed");

@@ -13,7 +13,7 @@ endif
 TESTS := tst-tls1 tst-tls2 tst-tls3 tst-tls4 tst-tls5 tst-tls6 tst-tls7	\
 	tst-tls8 tst-tls9 tst-tls10 tst-tls11 tst-tls12 tst-tls13	\
 	tst-tls14 tst-tls15 tst-tls16 tst-tls17 tst-tls18 tst-tls-at-ctor \
-	tst-tls-ie-many \
+	tst-tls-ie-many tst-tls-ie-full \
 	tst-tls1-static tst-tls2-static tst-tls9-static \
 	tst-tls1-pie tst-tls2-pie tst-tls3-pie
 
@@ -61,6 +61,7 @@ CFLAGS_tst-tlsmod16a.so := -fPIC -DSHARED -shared
 CFLAGS_tst-tlsmod16b.so := -fPIC -DSHARED -shared
 CFLAGS_tst-tlsmod17a.so := -fPIC -DSHARED -shared
 CFLAGS_tst-tlsmod-ie.so := -fPIC -DSHARED -shared
+CFLAGS_tst-tlsmod-ie-big.so := -fPIC -DSHARED -shared
 CFLAGS_tst-tlsmod17b.so := -fPIC -DSHARED -shared
 CFLAGS_tst-tlsmod18a.so := -fPIC -DSHARED -shared
 CFLAGS_tst-tlsmod-at-ctor.so := -fPIC -DSHARED -shared
@@ -95,6 +96,7 @@ LDFLAGS_tst-tlsmod16a.so := -shared -static-libgcc -L$(top_builddir)lib
 LDFLAGS_tst-tlsmod16b.so := -shared -static-libgcc -L$(top_builddir)lib
 LDFLAGS_tst-tlsmod17a.so := -shared -static-libgcc -L$(top_builddir)lib
 LDFLAGS_tst-tlsmod-ie.so := -shared -static-libgcc -L$(top_builddir)lib
+LDFLAGS_tst-tlsmod-ie-big.so := -shared -static-libgcc -L$(top_builddir)lib
 LDFLAGS_tst-tlsmod17b.so := -shared -static-libgcc -L$(top_builddir)lib \
 	$(patsubst %,tst-tlsmod17a%.so,$(tlsmod17a-suffixes))
 LDFLAGS_tst-tlsmod18a.so := -shared -static-libgcc -L$(top_builddir)lib
@@ -117,6 +119,7 @@ LDFLAGS_tst-tls16 := -ldl -Wl,-rpath-link=.
 LDFLAGS_tst-tls17 := -ldl -Wl,-rpath-link=.
 LDFLAGS_tst-tls18 := -ldl -Wl,-rpath-link=.
 LDFLAGS_tst-tls-ie-many := -ldl -lpthread -Wl,-rpath-link=.
+LDFLAGS_tst-tls-ie-full := -ldl -Wl,-rpath-link=.
 LDFLAGS_tst-tls-at-ctor := tst-tlsmod-at-ctor.so
 
 tst-tlsmod3.so: tst-tlsmod2.so
@@ -158,6 +161,11 @@ tst-tlsmod18a%.so: tst-tlsmod18a.c
 	-DN=$* -Wl,-soname,$@ $(LDFLAGS) $(EXTRA_LIBS) \
 	$(LDFLAGS_tst-tlsmod18a.so)
 tst-tls-ie-many: $(patsubst %,tst-tlsmod-ie%.so,$(tlsmod-ie-suffixes))
+tst-tls-ie-full: tst-tlsmod-ie-big.so tst-tlsmod-ie0.so
+# Not by the pattern below, which would take "-big" for N.
+tst-tlsmod-ie-big.so: tst-tlsmod-ie-big.c
+	$(Q)$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $(CFLAGS_tst-tlsmod-ie-big.so) $< -o $@ \
+	-Wl,-soname,$@ $(LDFLAGS) $(EXTRA_LIBS) $(LDFLAGS_tst-tlsmod-ie-big.so)
 tst-tlsmod-ie%.so: tst-tlsmod-ie.c
 	$(Q)$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $(CFLAGS_tst-tlsmod-ie.so) $< -o $@ \
 	-DN=$* -Wl,-soname,$@ $(LDFLAGS) $(EXTRA_LIBS) \

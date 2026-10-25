@@ -46,15 +46,16 @@ int
 do_test (void)
 {
   thrd_t ids[N];
+  int i;
 
-  for (int i = 0; i < N; ++i)
+  for (i = 0; i < N; ++i)
     {
       if (thrd_create (&ids[i], func, NULL) != thrd_success)
 	FAIL_EXIT1 ("thrd_create failed");
     }
 
   /* Join threads.  */
-  for (int i = 0; i < N; ++i)
+  for (i = 0; i < N; ++i)
     {
       if (thrd_join (ids[i], NULL) != thrd_success)
 	FAIL_EXIT1 ("thrd_join failed");

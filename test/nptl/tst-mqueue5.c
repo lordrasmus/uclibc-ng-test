@@ -67,7 +67,9 @@ rtmin_handler (int sig, siginfo_t *info, void *ctx)
 static int
 wait_rtmin_cnt (int expected)
 {
-  for (int i = 0; i < 1000 && rtmin_cnt < expected; ++i)
+  int i;
+
+  for (i = 0; i < 1000 && rtmin_cnt < expected; ++i)
     {
       struct timespec ts = { .tv_sec = 0, .tv_nsec = 1000000 };
       nanosleep (&ts, NULL);

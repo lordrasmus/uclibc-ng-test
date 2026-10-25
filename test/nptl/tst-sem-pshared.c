@@ -43,7 +43,9 @@ struct shared
 static int
 worker (struct shared *sh)
 {
-  for (long i = 0; i < ITER; i++)
+  long i;
+
+  for (i = 0; i < ITER; i++)
     {
       struct timespec ts;
       clock_gettime (CLOCK_REALTIME, &ts);
@@ -88,7 +90,8 @@ main (void)
       return 1;
     }
 
-  for (int r = 1; r <= ROUNDS; r++)
+  int r, p;
+  for (r = 1; r <= ROUNDS; r++)
     {
       sh->counter = 0;
       if (sem_init (&sh->sem, 1, 1) != 0)
@@ -101,7 +104,7 @@ main (void)
 	  perror ("sem_init");
 	  return 1;
 	}
-      for (int p = 0; p < NPROC; p++)
+      for (p = 0; p < NPROC; p++)
 	{
 	  pid_t pid = fork ();
 	  if (pid < 0)
@@ -113,7 +116,7 @@ main (void)
 	    _exit (worker (sh));
 	}
       int failed = 0;
-      for (int p = 0; p < NPROC; p++)
+      for (p = 0; p < NPROC; p++)
 	{
 	  int st;
 	  if (wait (&st) < 0 || !WIFEXITED (st) || WEXITSTATUS (st) != 0)

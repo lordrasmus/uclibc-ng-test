@@ -44,6 +44,7 @@ static int
 worker (struct shared *sh)
 {
   long i;
+  volatile int k;
 
   for (i = 0; i < ITER; i++)
     {
@@ -58,7 +59,7 @@ worker (struct shared *sh)
 	  return 3;
 	}
       long c = sh->counter;
-      for (volatile int k = 0; k < 20; k++)
+      for (k = 0; k < 20; k++)
 	;			/* widen the window a little */
       sh->counter = c + 1;
       if (sem_post (&sh->sem) != 0)

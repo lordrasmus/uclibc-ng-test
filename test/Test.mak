@@ -11,6 +11,9 @@ endif
 # "export $(...)".  Each directory takes its own.
 comma := ,
 TESTS_DISABLED += $(patsubst $(notdir $(CURDIR))/%,%,$(filter $(notdir $(CURDIR))/%,$(subst $(comma), ,$(DISABLED_TESTS))))
+# An entry ending in -O2 takes out only the -O2 twin of that test.
+TESTS_DISABLED_O2 := $(patsubst %-O2,%,$(filter %-O2,$(TESTS_DISABLED)))
+TESTS_DISABLED := $(filter-out %-O2,$(TESTS_DISABLED))
 ifneq ($(strip $(TESTS_DISABLED)),)
 TESTS := $(filter-out $(TESTS_DISABLED),$(TESTS))
 endif
@@ -31,7 +34,7 @@ endif
 # tls-macros-i386.h ebx clobber, invisible at -O0).  Directories opt in
 # with O2_TWINS := 1; individual tests opt out via TESTS_NO_O2.
 ifeq ($(O2_TWINS),1)
-O2_TWIN_TARGETS := $(addsuffix -O2,$(filter-out %_glibc $(TESTS_NO_O2),$(TESTS)))
+O2_TWIN_TARGETS := $(addsuffix -O2,$(filter-out %_glibc $(TESTS_NO_O2) $(TESTS_DISABLED_O2),$(TESTS)))
 endif
 
 TARGETS := $(TESTS)

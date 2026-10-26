@@ -27,8 +27,7 @@
 #else
 # define TLS_IE(x) \
   ({ int *__l; void *__tp;						      \
-     __asm__ ("mov.l r12,@-r15\n\t"						      \
-	  "mova 0f,r0\n\t"						      \
+     __asm__ ("mova 0f,r0\n\t"						      \
 	  "mov.l 0f,r12\n\t"						      \
 	  "add r0,r12\n\t"						      \
 	  "mov.l 1f,r0\n\t"						      \
@@ -39,8 +38,8 @@
 	  ".align 2\n\t"						      \
 	  "1: .long " #x "@gottpoff\n\t"				      \
 	  "0: .long _GLOBAL_OFFSET_TABLE_\n\t"				      \
-	  "2: mov.l @r15+,r12"						      \
-	  : "=r" (__l), "=r" (__tp) : : "r0");				      \
+	  "2:"								      \
+	  : "=r" (__l), "=r" (__tp) : : "r0", "r12");			      \
      __l; })
 #endif
 
@@ -71,8 +70,7 @@
 #else
 # define TLS_LD(x) \
   ({ int *__l;								      \
-     __asm__ ("mov.l r12,@-r15\n\t"						      \
-	  "mova 0f,r0\n\t"						      \
+     __asm__ ("mova 0f,r0\n\t"						      \
 	  "mov.l 0f,r12\n\t"						      \
 	  "add r0,r12\n\t"						      \
 	  "mov.l 1f,r4\n\t"						      \
@@ -92,9 +90,9 @@
 	  " add r0,%0\n\t"						      \
 	  ".align 2\n\t"						      \
 	  "3: .long " #x "@dtpoff\n\t"					      \
-	  "5: mov.l @r15+,r12"						      \
+	  "5:"								      \
 	  : "=r" (__l) : : "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7",    \
-			   "pr", "t");					      \
+			   "r12", "pr", "t");				      \
      __l; })
 #endif
 
@@ -120,8 +118,7 @@
 #else
 # define TLS_GD(x) \
   ({ int *__l;								      \
-     __asm__ ("mov.l r12,@-r15\n\t"						      \
-	  "mova 0f,r0\n\t"						      \
+     __asm__ ("mova 0f,r0\n\t"						      \
 	  "mov.l 0f,r12\n\t"						      \
 	  "add r0,r12\n\t"						      \
 	  "mov.l 1f,r4\n\t"						      \
@@ -136,8 +133,8 @@
 	  "1: .long " #x "@tlsgd\n\t"					      \
 	  "2: .long __tls_get_addr@plt\n\t"				      \
 	  "0: .long _GLOBAL_OFFSET_TABLE_\n\t"				      \
-	  "3: mov.l @r15+,r12"						      \
+	  "3:"								      \
 	  : "=r" (__l) : : "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7",    \
-			   "pr", "t");					      \
+			   "r12", "pr", "t");				      \
      __l; })
 #endif

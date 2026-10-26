@@ -62,6 +62,15 @@ def links_pie():
                        capture_output=True, text=True)
     return r.returncode == 0
 
+def links(src):
+    """Whether a program with this source links against the libc."""
+    cc = shlex.split(os.environ.get("CC", "gcc"))
+    flags = (shlex.split(os.environ.get("CFLAGS", ""))
+             + shlex.split(os.environ.get("LDFLAGS", "")))
+    r = subprocess.run(cc + flags + ["-x", "c", "-", "-o", os.devnull],
+                       input=src, capture_output=True, text=True)
+    return r.returncode == 0
+
 defined = macros()
 
 # uClibc-ng defines __GLIBC__ too, so it is asked first
@@ -207,6 +216,12 @@ if uclibc:
 # 111 errors of that one cause.  On when long double is done per format.
 if uclibc:
     disable("math/test-ldouble", "math/test-ildoubl")
+
+# uClibc-ng has prlimit only where the kernel headers have __NR_prlimit64;
+# frv's syscall table (Linux 4.9, the last with frv) ends before it.
+if not links("#define _GNU_SOURCE\n#include <sys/resource.h>\n"
+             "int main(void){return prlimit(0, RLIMIT_CORE, 0, 0);}\n"):
+    disable("misc/tst-rlimit", "misc/tst-rlimit64")
 
 # tst-fallocate64 and tst-posix_fallocate64 allocate past 4 GiB; the rootfs
 # is a tmpfs in guest RAM.

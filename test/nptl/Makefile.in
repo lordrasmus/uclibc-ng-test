@@ -90,6 +90,11 @@ endif
 ifeq ($(TARGET_ARCH),i686)
 CFLAGS_tst-align := -malign-double -mpreferred-stack-boundary=4 -msse
 endif
+ifeq ($(TARGET_ARCH),frv)
+# FR-V gcc reaches TLS with 12-bit offsets unless told the segment is
+# larger; this one has 4096-aligned variables.
+CFLAGS_tls_local_exec := -mTLS
+endif
 CFLAGS_tst-cleanup4aux.o := -W
 CFLAGS_tst-initializers1 := -W -Werror
 CFLAGS_tst-tls3mod.so := -fPIC -DPIC -DSHARED -shared

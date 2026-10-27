@@ -36,6 +36,10 @@
 #endif
 #endif
 
+#ifdef __CRIS__
+#include <tls-macros-cris.h>
+#endif
+
 #ifdef __csky__
 #include <tls-macros-csky.h>
 #endif

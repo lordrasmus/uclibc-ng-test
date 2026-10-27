@@ -72,7 +72,13 @@ do_test (void)
   volatile pid_t ctid = CTID_INIT_VAL;
   pid_t tid;
 
-#if _STACK_GROWS_DOWN
+#ifdef __ia64__
+  extern int __clone2 (int (*__fn) (void *__arg), void *__child_stack_base,
+		       size_t __child_stack_size, int __flags,
+		       void *__arg, ...);
+  tid = __clone2 (f, st, sizeof (st), clone_flags, NULL, /* ptid */ NULL,
+		  /* tls */ NULL, &ctid);
+#elif _STACK_GROWS_DOWN
   tid = clone (f, st + sizeof (st), clone_flags, NULL, /* ptid */ NULL,
 	       /* tls */ NULL, &ctid);
 #elif _STACK_GROWS_UP

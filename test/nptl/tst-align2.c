@@ -24,6 +24,15 @@
 #include <unistd.h>
 #include "tst-stack-align.h"
 
+/* Without an MMU the main stack cannot grow: an FDPIC program gets 128 KB,
+   and a 128 KB array on it puts every deeper frame below the stack, into
+   whatever memory lies there.  */
+#ifdef __ARCH_USE_MMU__
+# define CHILD_STACK_SIZE (128 * 1024)
+#else
+# define CHILD_STACK_SIZE (32 * 1024)
+#endif
+
 #if defined(__hppa__)
 #define _STACK_GROWS_UP		1
 #else
@@ -58,7 +67,7 @@ do_test (void)
   char st[256 * 1024];
   pid_t p = __clone2 (f, st, sizeof (st), 0, 0);
 #else
-  char st[128 * 1024];
+  char st[CHILD_STACK_SIZE];
 # if _STACK_GROWS_DOWN
   pid_t p = clone (f, st + sizeof (st), 0, 0);
 # elif _STACK_GROWS_UP

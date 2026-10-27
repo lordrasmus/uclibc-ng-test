@@ -24,6 +24,12 @@
 #include <unistd.h>
 #include "tst-stack-align.h"
 
+#if defined(__hppa__)
+#define _STACK_GROWS_UP		1
+#else
+#define _STACK_GROWS_DOWN	1
+#endif
+
 static int
 f (void *arg)
 {
@@ -53,7 +59,13 @@ do_test (void)
   pid_t p = __clone2 (f, st, sizeof (st), 0, 0);
 #else
   char st[128 * 1024];
+# if _STACK_GROWS_DOWN
   pid_t p = clone (f, st + sizeof (st), 0, 0);
+# elif _STACK_GROWS_UP
+  pid_t p = clone (f, st, 0, 0);
+# else
+#  error "Define either _STACK_GROWS_DOWN or _STACK_GROWS_UP"
+# endif
 #endif
   if (p == -1)
     {

@@ -40,6 +40,10 @@
 #include <tls-macros-csky.h>
 #endif
 
+#ifdef __hppa__
+#include <tls-macros-hppa.h>
+#endif
+
 #ifdef __i386__
 #include <tls-macros-i386.h>
 #endif

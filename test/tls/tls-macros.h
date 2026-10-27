@@ -40,6 +40,10 @@
 #include <tls-macros-csky.h>
 #endif
 
+#ifdef __frv__
+#include <tls-macros-frv.h>
+#endif
+
 #ifdef __hppa__
 #include <tls-macros-hppa.h>
 #endif

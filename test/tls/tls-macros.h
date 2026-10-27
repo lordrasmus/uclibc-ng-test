@@ -112,6 +112,10 @@
 #include <tls-macros-xtensa.h>
 #endif
 
+#ifdef __tile__
+#include <tls-macros-tile.h>
+#endif
+
 #ifdef __or1k__
 #include <tls-macros-or1k.h>
 #endif

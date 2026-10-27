@@ -55,7 +55,14 @@ do_test (void)
 
   sprintf (p, "This should segv\n");
 
+#ifndef __ARCH_USE_MMU__
+  /* Without an MMU nothing need guard address 0; on mcf5208 it is ROM
+     and the write is dropped.  */
+  puts ("SKIP: a write through a null pointer does not fault here");
+  return 23;
+#else
   return 1;
+#endif
 }
 
 #define TEST_FUNCTION do_test ()

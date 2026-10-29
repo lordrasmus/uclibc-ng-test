@@ -65,3 +65,15 @@
     asm ("movel #" #x "@TLSLE, %0"					\
 	 : "=a" (__offset));						\
     (int *) (__tp + __offset); })
+
+#if defined __uClinux__ && !defined __PIC__
+/* A uClinux program holds all its thread-local storage, and the FLAT
+   loader relocates every GOT entry, which a thread-pointer offset must
+   not be.  gcc uses local-exec there, and so do these.  */
+# undef TLS_GD
+# undef TLS_LD
+# undef TLS_IE
+# define TLS_GD(x) TLS_LE (x)
+# define TLS_LD(x) TLS_LE (x)
+# define TLS_IE(x) TLS_LE (x)
+#endif

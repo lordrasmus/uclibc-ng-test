@@ -39,3 +39,16 @@
              : "=r" (__result));                        \
         __result; })
 
+
+#include <features.h>
+#ifdef __UCLIBC_FORMAT_FLAT__
+/* A FLAT program holds all its thread-local storage, and the loader
+   relocates every GOT entry, which a thread-pointer offset must not
+   be.  gcc uses local-exec there, and so do these.  */
+# undef TLS_GD
+# undef TLS_LD
+# undef TLS_IE
+# define TLS_GD(x) TLS_LE (x)
+# define TLS_LD(x) TLS_LE (x)
+# define TLS_IE(x) TLS_LE (x)
+#endif

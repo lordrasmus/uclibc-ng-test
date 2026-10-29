@@ -1,17 +1,22 @@
 /* Macros to support TLS testing in times of missing compiler support.  */
 
+/* The assembler name of a C symbol; Blackfin prefixes an underscore.  */
+#define __TLS_STR2(x) #x
+#define __TLS_STR(x) __TLS_STR2 (x)
+#define TLS_ASM_NAME(x) __TLS_STR (__USER_LABEL_PREFIX__) #x
+
 #define COMMON_INT_DEF(x) \
-  __asm__ (".tls_common " #x ",4,4")
+  __asm__ (".tls_common " TLS_ASM_NAME (x) ",4,4")
 /* XXX Until we get compiler support we don't need declarations.  */
 #define COMMON_INT_DECL(x)
 
 /* XXX This definition will probably be machine specific, too.  */
 #define VAR_INT_DEF(x) \
   __asm__ (".section .tdata\n\t"						      \
-       ".globl " #x "\n"						      \
+       ".globl " TLS_ASM_NAME (x) "\n"				      \
        ".balign 4\n"							      \
-       #x ":\t.long 0\n\t"						      \
-       ".size " #x ",4\n\t"						      \
+       TLS_ASM_NAME (x) ":\t.long 0\n\t"				      \
+       ".size " TLS_ASM_NAME (x) ",4\n\t"				      \
        ".previous")
 /* XXX Until we get compiler support we don't need declarations.  */
 #define VAR_INT_DECL(x)
@@ -34,6 +39,14 @@
 #else
 #include <tls-macros-arm.h>
 #endif
+#endif
+
+#ifdef __bfin__
+#include <tls-macros-bfin.h>
+#endif
+
+#ifdef _TMS320C6X
+#include <tls-macros-c6x.h>
 #endif
 
 #ifdef __CRIS__

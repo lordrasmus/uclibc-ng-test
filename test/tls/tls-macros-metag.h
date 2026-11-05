@@ -2,7 +2,7 @@
   ({ void *__result;					\
      extern void *__tls_get_addr (void *);		\
      __asm__ ("MOV %0, A1LbP\n\t"			\
-	  "ADD %0, %0, #(" #x "@TLSGD)"			\
+	  "ADD %0, %0, #(" TLS_ASM_NAME (x) "@TLSGD)"			\
 	  : "=d" (__result));				\
      (int *)__tls_get_addr (__result); })
 
@@ -10,11 +10,11 @@
   ({ void *__result;					\
      extern void *__tls_get_addr (void *);		\
      __asm__ ("MOV %0, A1LbP\n\t"			\
-	  "ADD %0, %0, #(" #x "@TLSLDM)"		\
+	  "ADD %0, %0, #(" TLS_ASM_NAME (x) "@TLSLDM)"		\
 	  : "=d" (__result));				\
      __result = __tls_get_addr (__result);		\
-     __asm__ ("ADDT %0,%0,#HI(" #x "@TLSLDO)\n\t"	\
-	  "ADD %0,%0,#LO(" #x "@TLSLDO)"		\
+     __asm__ ("ADDT %0,%0,#HI(" TLS_ASM_NAME (x) "@TLSLDO)\n\t"	\
+	  "ADD %0,%0,#LO(" TLS_ASM_NAME (x) "@TLSLDO)"		\
 	  : "+d" (__result));				\
      __result; })
 
@@ -22,7 +22,7 @@
   ({ void *__result;					\
      unsigned long __rel;				\
      extern void *__metag_load_tp (void);		\
-     __asm__ ("GETD %0,[A1LbP+#(" #x "@TLSIE)]"		\
+     __asm__ ("GETD %0,[A1LbP+#(" TLS_ASM_NAME (x) "@TLSIE)]"		\
 	  : "=d" (__rel));				\
      __result = __metag_load_tp();			\
      __result + __rel; })
@@ -31,8 +31,8 @@
   ({ void *__result;					\
      extern void *__metag_load_tp (void);		\
      __result = __metag_load_tp();			\
-     __asm__ ("ADDT %0,%0,#HI(" #x "@TLSLE)\n\t"	\
-	  "ADD %0,%0,#LO(" #x "@TLSLE)"			\
+     __asm__ ("ADDT %0,%0,#HI(" TLS_ASM_NAME (x) "@TLSLE)\n\t"	\
+	  "ADD %0,%0,#LO(" TLS_ASM_NAME (x) "@TLSLE)"			\
 	  : "+d" (__result));				\
      __result; })
 

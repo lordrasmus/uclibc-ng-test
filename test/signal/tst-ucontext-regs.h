@@ -26,6 +26,11 @@
 # define TRAP() __asm__ __volatile__ ("movgs gr0,psr")
 #elif defined __TMS320C6X__
 # define TRAP() __asm__ __volatile__ (".word 0x56454314")
+#elif defined __microblaze__
+/* gcc's __builtin_trap is bri 0, a branch to itself.  gdb's brki r16, 0x18
+   reaches the handler only as a fatal SIGTRAP; writing the MSR is
+   privileged and raises SIGILL.  */
+# define TRAP() __asm__ __volatile__ ("mts rmsr, r0")
 #elif defined __nds32__
 /* gcc's trap #0 is no debug trap to Linux, which kills the process for
    it; gdb's break16 0 raises SIGTRAP.  */

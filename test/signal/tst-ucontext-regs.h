@@ -26,6 +26,10 @@
 # define TRAP() __asm__ __volatile__ ("movgs gr0,psr")
 #elif defined __TMS320C6X__
 # define TRAP() __asm__ __volatile__ (".word 0x56454314")
+#elif defined __nds32__
+/* gcc's trap #0 is no debug trap to Linux, which kills the process for
+   it; gdb's break16 0 raises SIGTRAP.  */
+# define TRAP() __asm__ __volatile__ ("break16 0")
 #elif defined __avr32__
 # define TRAP() __asm__ __volatile__ ("breakpoint")
 #elif defined __kvx__

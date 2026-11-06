@@ -10,7 +10,7 @@
 
 /* A trap instruction.  Where gcc has none, __builtin_trap calls abort and
    the signal would come from raise; take the instruction gdb uses as its
-   breakpoint there.  */
+   breakpoint there, where it raises a signal.  */
 #if defined __sh__ && (defined __SH2__ || defined __SH2E__ || defined __SH2A__)
 /* trapa #0xc3 raises no signal on SH-2; a reserved opcode does.  */
 # define TRAP() __asm__ __volatile__ (".word 0xfffd")
@@ -21,7 +21,9 @@
 #elif defined __or1k__
 # define TRAP() __asm__ __volatile__ ("l.trap 1")
 #elif defined __frv__
-# define TRAP() __asm__ __volatile__ ("tira gr0,#1")
+/* Not gdb's tira gr0,#1: Linux takes every user tira through the system
+   call entry.  Writing the PSR is privileged and raises SIGILL.  */
+# define TRAP() __asm__ __volatile__ ("movgs gr0,psr")
 #elif defined __TMS320C6X__
 # define TRAP() __asm__ __volatile__ (".word 0x56454314")
 #elif defined __avr32__
@@ -106,11 +108,9 @@ trap_fn (unsigned long arg)
 # define UC_SP(uc)   UC_M (uc).gregs[REG_GR1]
 # define UC_ARG0(uc) UC_M (uc).gregs[REG_GR8]
 #elif defined __H8300H__ || defined __H8300S__ || defined __H8300__
-/* <sys/ucontext.h> names only er0..er7, there is no PC to read.  */
-# define UC_NO_PC
-# define UC_PC(uc)   0
-# define UC_SP(uc)   UC_M (uc).gregs[ER7]
-# define UC_ARG0(uc) UC_M (uc).gregs[ER0]
+# define UC_PC(uc)   UC_M (uc).sc_pc
+# define UC_SP(uc)   UC_M (uc).sc_usp
+# define UC_ARG0(uc) UC_M (uc).sc_er0
 #elif defined __hppa__
 /* The low two bits of the instruction address are the privilege level.  */
 # define UC_PC(uc)   UC_M (uc).sc_iaoq[0]
@@ -157,9 +157,10 @@ trap_fn (unsigned long arg)
 # define UC_SP(uc)   UC_M (uc).nds32_sp
 # define UC_ARG0(uc) UC_M (uc).nds32_r0
 #elif defined __nios2__
-# define UC_PC(uc)   UC_M (uc).gregs[REG_PC]
-# define UC_SP(uc)   UC_M (uc).gregs[REG_O6]
-# define UC_ARG0(uc) UC_M (uc).gregs[REG_O0]
+/* regs[i] is r(i+1): ea (the PC) is 27, sp 28, r4 3.  */
+# define UC_PC(uc)   UC_M (uc).regs[27]
+# define UC_SP(uc)   UC_M (uc).regs[28]
+# define UC_ARG0(uc) UC_M (uc).regs[3]
 #elif defined __or1k__
 # define UC_PC(uc)   UC_M (uc).regs.pc
 # define UC_SP(uc)   UC_M (uc).regs.gpr[1]

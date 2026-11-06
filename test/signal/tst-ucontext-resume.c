@@ -30,7 +30,8 @@ code_addr (void (*fn) (unsigned long))
 {
   unsigned long a = (unsigned long) fn;
 
-#if defined __ia64__ || defined __FDPIC__
+#if defined __ia64__ || defined __FDPIC__ || defined __FRV_FDPIC__ \
+    || defined __BFIN_FDPIC__
   a = *(unsigned long *) a;		/* function descriptor */
 #elif defined __hppa__
   if (a & 2)

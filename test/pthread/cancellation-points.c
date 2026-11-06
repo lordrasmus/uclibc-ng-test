@@ -269,7 +269,10 @@ int _test_func(const char *func_name, void *(*func)(void*), const int should_can
 
 	printf(".");
 	ready = false;
-	pthread_create(&cancel_thread_id, NULL, func, NULL);
+	if (pthread_create(&cancel_thread_id, NULL, func, NULL)) {
+		perror(" pthread_create failed");
+		return 1;
+	}
 
 	printf(".");
 	while (!ready)
@@ -288,6 +291,11 @@ int _test_func(const char *func_name, void *(*func)(void*), const int should_can
 
 	printf(".");
 	ret = (!!!alarm(0) == should_cancel);
+
+	/* Without the join every thread kept its stack: without an MMU, after
+	   some sixty of them pthread_create found no block large enough and
+	   the loop above waited for a thread that was never created.  */
+	pthread_join(cancel_thread_id, NULL);
 
 	if (ret)
 		printf(" failed ;(\n");

@@ -11,8 +11,13 @@
 /* A trap instruction.  Where gcc has none, __builtin_trap calls abort and
    the signal would come from raise; take the instruction gdb uses as its
    breakpoint there.  */
-#if defined __sh__
+#if defined __sh__ && (defined __SH2__ || defined __SH2E__ || defined __SH2A__)
+/* trapa #0xc3 raises no signal on SH-2; a reserved opcode does.  */
+# define TRAP() __asm__ __volatile__ (".word 0xfffd")
+#elif defined __sh__
 # define TRAP() __asm__ __volatile__ ("trapa #0xc3")
+#elif defined __H8300H__ || defined __H8300S__ || defined __H8300__
+# define TRAP() __asm__ __volatile__ ("trapa #3")
 #elif defined __or1k__
 # define TRAP() __asm__ __volatile__ ("l.trap 1")
 #elif defined __frv__
@@ -26,6 +31,25 @@
 #else
 # define TRAP() __builtin_trap ()
 #endif
+
+/* A broken mcontext_t can make a test loop on its trap or hang; fail
+   instead of using up the time of the whole suite.  */
+static void
+timeout (int sig)
+{
+  static const char msg[] = "FAIL: timed out\n";
+
+  (void) sig;
+  write (1, msg, sizeof msg - 1);
+  _exit (1);
+}
+
+static void
+start_timeout (void)
+{
+  signal (SIGALRM, timeout);
+  alarm (20);
+}
 
 /* Traps as its first instruction, with its argument still in the first
    argument register.  */

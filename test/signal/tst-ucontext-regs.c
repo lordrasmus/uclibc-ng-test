@@ -11,12 +11,15 @@
    trap instruction rather than a jump to an unmapped address, because
    without an MMU there is no unmapped address.  */
 
-#define _GNU_SOURCE
+#ifndef _GNU_SOURCE
+# define _GNU_SOURCE
+#endif
 #include <setjmp.h>
 #include <signal.h>
 #include <stdio.h>
 #include <string.h>
 #include <ucontext.h>
+#include <unistd.h>
 
 #define ARG_VALUE 0x5a5a1234UL
 
@@ -71,13 +74,14 @@ code_addr (void (*fn) (unsigned long))
 int
 main (void)
 {
-  static const int sigs[] = { SIGILL, SIGTRAP, SIGSEGV, SIGBUS, SIGABRT };
+  static const int sigs[] = { SIGILL, SIGTRAP, SIGSEGV, SIGBUS, SIGFPE, SIGABRT };
   void (*volatile fn) (unsigned long) = trap_fn;
   volatile char here = 0;
   struct sigaction sa;
   int ret = 0;
   unsigned int i;
 
+  start_timeout ();
   memset (&sa, 0, sizeof sa);
   sa.sa_sigaction = handler;
   sa.sa_flags = SA_SIGINFO;

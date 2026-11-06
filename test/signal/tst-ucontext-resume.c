@@ -6,12 +6,15 @@
    at the entry of landing, sets the first argument register and returns;
    the program must then go on in landing with that argument.  */
 
-#define _GNU_SOURCE
+#ifndef _GNU_SOURCE
+# define _GNU_SOURCE
+#endif
 #include <setjmp.h>
 #include <signal.h>
 #include <stdio.h>
 #include <string.h>
 #include <ucontext.h>
+#include <unistd.h>
 
 #define ARG_VALUE    0x5a5a1234UL
 #define RESUME_VALUE 0x600dcafeUL
@@ -52,6 +55,14 @@ handler (int sig, siginfo_t *si, void *ctx)
 
   (void) sig;
   (void) si;
+  if (trapped)
+    {
+      /* The trap again: the context change did not take, and returning
+	 would trap forever.  */
+      static const char msg[] = "FAIL: the handler's context change did not take effect\n";
+      write (1, msg, sizeof msg - 1);
+      _exit (1);
+    }
   trapped = 1;
 #ifdef UC_ENTER
   UC_ENTER (uc, code_addr (landing));
@@ -67,12 +78,13 @@ handler (int sig, siginfo_t *si, void *ctx)
 int
 main (void)
 {
-  static const int sigs[] = { SIGILL, SIGTRAP, SIGSEGV, SIGBUS };
+  static const int sigs[] = { SIGILL, SIGTRAP, SIGSEGV, SIGBUS, SIGFPE };
   void (*volatile fn) (unsigned long) = trap_fn;
   struct sigaction sa;
   unsigned int i;
   int ret = 0;
 
+  start_timeout ();
   memset (&sa, 0, sizeof sa);
   sa.sa_sigaction = handler;
   sa.sa_flags = SA_SIGINFO;

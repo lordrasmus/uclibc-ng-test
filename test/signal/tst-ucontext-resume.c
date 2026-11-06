@@ -67,7 +67,9 @@ handler (int sig, siginfo_t *si, void *ctx)
   trapped = 1;
 #ifdef UC_ENTER
   UC_ENTER (uc, code_addr (landing));
-# ifdef UC_ARG0
+# if defined UC_ENTER_ARG0
+  UC_ENTER_ARG0 (uc) = RESUME_VALUE;
+# elif defined UC_ARG0
   UC_ARG0 (uc) = RESUME_VALUE;
 # endif
 #else

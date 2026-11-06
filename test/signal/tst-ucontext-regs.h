@@ -243,10 +243,17 @@ trap_fn (unsigned long arg)
 # define UC_ENTER(uc, a) \
   (UC_SC (uc)->pc = (a), UC_SC (uc)->npc = (a) + 4)
 #elif defined __xtensa__ && !defined __XTENSA_CALL0_ABI__
-/* PS.CALLINC 0: the callee's entry does not rotate the window, so its
-   a2 is the a2 set here.  */
+/* As a call4 from the interrupted function: the return address in a4
+   with the window increment in its top bits, the stack pointer in a5,
+   the argument in a6 and PS.CALLINC 1.  The callee's entry then rotates
+   the window by four and finds its caller's frame intact, which a later
+   window overflow needs.  */
 # define UC_ENTER(uc, a) \
-  (UC_M (uc).sc_pc = (a), UC_M (uc).sc_ps &= ~(3UL << 16))
+  (UC_M (uc).sc_a[4] = (UC_M (uc).sc_pc & 0x3fffffffUL) | 0x40000000UL, \
+   UC_M (uc).sc_a[5] = UC_M (uc).sc_a[1],				\
+   UC_M (uc).sc_ps = (UC_M (uc).sc_ps & ~(3UL << 16)) | (1UL << 16),	\
+   UC_M (uc).sc_pc = (a))
+# define UC_ENTER_ARG0(uc) UC_M (uc).sc_a[6]
 #elif !defined UC_NO_PC
 # define UC_ENTER(uc, a) (UC_PC (uc) = (a))
 #endif

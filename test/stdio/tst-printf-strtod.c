@@ -285,10 +285,21 @@ static int report (int *count, const char *what, const char *in,
   return 1;
 }
 
+/* An FPU without subnormals (the C674x reads them as zero) cannot print one:
+   printf takes its value apart by arithmetic, as musl's does.  strtod builds
+   the bits from integers and is checked all the same.  */
+static int fpu_flushes (void)
+{
+  static volatile double dmin = DBL_MIN;
+
+  return dmin / 2 == 0;
+}
+
 int main (void)
 {
   int n = sizeof t / sizeof *t, i;
   int bad_g = 0, bad_a = 0, bad_sg = 0, bad_sa = 0, bad_edge = 0;
+  int ftz = fpu_flushes (), skipped = 0;
   int bad_f, bad_ld;
   char buf[64], in[24], got[24], want[24];
 
@@ -296,14 +307,23 @@ int main (void)
     {
       double v;
       uint64_t b;
+      int sub;
 
       memcpy (&v, &t[i].bits, 8);
       sprintf (in, "%016llx", (unsigned long long) t[i].bits);
       sprintf (want, "%016llx", (unsigned long long) t[i].bits);
 
-      snprintf (buf, sizeof buf, "%.17g", v);
-      if (strcmp (buf, t[i].g17))
-	report (&bad_g, "printf %.17g", in, buf, t[i].g17);
+      /* Exponent field 0, not zero: a subnormal.  */
+      sub = (t[i].bits >> 52 & 0x7ff) == 0 && (t[i].bits << 1) != 0;
+
+      if (ftz && sub)
+	skipped++;
+      else
+	{
+	  snprintf (buf, sizeof buf, "%.17g", v);
+	  if (strcmp (buf, t[i].g17))
+	    report (&bad_g, "printf %.17g", in, buf, t[i].g17);
+	}
 
       b = bits_of (strtod (t[i].g17, NULL));
       if (b != t[i].bits)
@@ -314,9 +334,12 @@ int main (void)
 
       if (!HEX)
 	continue;
-      snprintf (buf, sizeof buf, "%a", v);
-      if (!hex_to_bits (buf, &b) || b != t[i].bits)
-	report (&bad_a, "printf %a", in, buf, t[i].a);
+      if (!(ftz && sub))
+	{
+	  snprintf (buf, sizeof buf, "%a", v);
+	  if (!hex_to_bits (buf, &b) || b != t[i].bits)
+	    report (&bad_a, "printf %a", in, buf, t[i].a);
+	}
 
       b = bits_of (strtod (t[i].a, NULL));
       if (b != t[i].bits)
@@ -344,6 +367,9 @@ int main (void)
   printf ("%d values: printf %%.17g %d, printf %%a %d, strtod %%.17g %d, "
 	  "strtod %%a %d, strtod edge %d wrong%s\n", n, bad_g, bad_a, bad_sg,
 	  bad_sa, bad_edge, HEX ? "" : " (no hex floats)");
+  if (skipped)
+    printf ("printf of %d subnormal value(s) skipped -- the FPU flushes them "
+	    "to zero\n", skipped);
   bad_f = check_strtof ();
   bad_ld = check_strtold ();
   return bad_g || bad_a || bad_sg || bad_sa || bad_edge || bad_f || bad_ld;

@@ -262,6 +262,11 @@ drop_page_cache(void)
 
 /* Runs one test and returns the status the shell would have reported in $?,
    that is 128 + signal when it died of one.  -1 means it could not be run. */
+/* -w: a command each test is run under, e.g. "qemu-cris -L /rootfs" to run
+   the suite on the build host with qemu's user mode.  Split at blanks. */
+static char *wrap[16];
+static int nwrap;
+
 static int
 run_one(char **w, int nw, const char *outfile, char **environ_in)
 {
@@ -298,6 +303,8 @@ run_one(char **w, int nw, const char *outfile, char **environ_in)
 		}
 	}
 
+	for (na = 0; na < nwrap; na++)
+		argv[na] = wrap[na];
 	for (; i < nw; i++) {
 		if (strcmp(w[i], "<") == 0 && i + 1 < nw) {
 			redirect = w[++i];
@@ -308,7 +315,7 @@ run_one(char **w, int nw, const char *outfile, char **environ_in)
 		argv[na++] = w[i];
 	}
 	argv[na] = NULL;
-	if (na == 0)
+	if (na == nwrap)
 		return -1;
 
 	/* Build the environment before the vfork: the child shares this memory
@@ -731,10 +738,17 @@ main(int argc, char **argv)
 			opt_runlines = 1;
 		else if (strcmp(argv[i], "-f") == 0 && i + 1 < argc)
 			infile = argv[++i];
-		else {
-			fprintf(stderr, "usage: %s [-c] [-r] [-f file]\n"
+		else if (strcmp(argv[i], "-w") == 0 && i + 1 < argc) {
+			char *t;
+
+			for (t = strtok(argv[++i], " \t"); t && nwrap < 15;
+			     t = strtok(NULL, " \t"))
+				wrap[nwrap++] = t;
+		} else {
+			fprintf(stderr, "usage: %s [-c] [-r] [-f file] [-w cmd]\n"
 				"  -c  colour the result and pad the subdir column\n"
-				"  -r  print \"RUN name\" instead of overwriting progress\n",
+				"  -r  print \"RUN name\" instead of overwriting progress\n"
+				"  -w  run each test under cmd, e.g. \"qemu-cris -L /rootfs\"\n",
 				argv[0]);
 			return 1;
 		}

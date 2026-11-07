@@ -30,7 +30,7 @@
 /* The descriptor function may end in __tls_get_addr: a call.  */
 #define TLS_NDS32_CALL_CLOBBERS                         \
         "$r0", "$r1", "$r2", "$r3", "$r4", "$r5",       \
-        "$r15", "$r16", "$r17", "$r18", "$r19", "$r20", \
+        "$ta", "$r16", "$r17", "$r18", "$r19", "$r20", \
         "$r21", "$r22", "$r23", "$r24", "memory"
 
 #define TLS_GD(x)                                       \

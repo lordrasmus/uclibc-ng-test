@@ -20,6 +20,8 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
+#include <float.h>
 #include <math.h>
 #include <features.h>
 
@@ -53,6 +55,40 @@
    more often, which is why the two limits are separate.  */
 
 #define NELEM(a)	((int)(sizeof (a) / sizeof (a)[0]))
+
+/* Some FPUs have no subnormals: the C674x reads them as zero and flushes
+   results below the normal range, as its manual says.  There no libm can be
+   exact near that range, since a correctly computed result loses whatever
+   correction term falls below it (exp10 near 1e-298 adds r * corr, about
+   1e-314).  Such a target skips every point with an argument or a result
+   within a mantissa's width of the subnormals; elsewhere nothing changes.
+   Decided by the bits, because comparing a subnormal is already flushed.  */
+static inline int ulp_ftz(void)
+{
+	static volatile double dmin = DBL_MIN;
+	static volatile float fmin = FLT_MIN;
+
+	return dmin / 2 == 0 || fmin / 2 == 0;
+}
+
+static inline int ulp_tiny_d(double v)
+{
+	uint64_t b;
+
+	memcpy(&b, &v, sizeof b);
+	return (b >> 52 & 0x7ff) < 1 + DBL_MANT_DIG && (b << 1) != 0;
+}
+
+static inline int ulp_tiny_f(float v)
+{
+	uint32_t b;
+
+	memcpy(&b, &v, sizeof b);
+	return (b >> 23 & 0xff) < 1 + FLT_MANT_DIG && (b << 1) != 0;
+}
+
+#define ULP_FTZ_SKIP(tiny, x, y, want) \
+	(ulp_ftz() && (tiny(x) || tiny(y) || tiny(want)))
 
 /* Generated tables.  Results in them are positive, which is what makes the
    integer subtraction in ulp_steps_* a distance.  */
@@ -130,8 +166,12 @@ static inline long ulp_steps_l(long double got, double want)
 
 static inline int ulp_verdict(const char *name, int wrong, int n, long worst,
 			      int max_wrong, int max_steps, double wx,
-			      double wy, int arity)
+			      double wy, int arity, int skipped)
 {
+	if (skipped)
+		printf("%s: %d point(s) near the subnormals skipped -- the FPU "
+		       "flushes them to zero\n", name, skipped);
+	n -= skipped;
 	if (arity == 2)
 		printf("%s variant, %s: %d of %d off, worst %ld step(s) at (%a,%a)\n",
 		       TIER, name, wrong, n, worst, wx, wy);
@@ -154,18 +194,23 @@ static inline int ulp_verdict(const char *name, int wrong, int n, long worst,
 
 /* One sweep per (type, arity).  Bodies are identical apart from the types, so
    they are written once here rather than once per test.  */
-#define ULP_DEFINE_SWEEP1(sfx, type, table, steps)			\
+#define ULP_DEFINE_SWEEP1(sfx, type, table, steps, tiny)			\
 static inline int ulp_sweep1_##sfx(const char *name, type (*fn)(type),	\
 				   const struct table *t, int n,	\
 				   int max_wrong, int max_steps)	\
 {									\
-	int i, wrong = 0;						\
+	int i, wrong = 0, skipped = 0;					\
 	long worst = 0;							\
 	double wx = 0;							\
 									\
 	for (i = 0; i < n; i++) {					\
-		long s = steps(fn(t[i].x), t[i].want);			\
+		long s;							\
 									\
+		if (ULP_FTZ_SKIP(tiny, t[i].x, t[i].x, t[i].want)) {	\
+			skipped++;					\
+			continue;					\
+		}							\
+		s = steps(fn(t[i].x), t[i].want);			\
 		if (s != 0)						\
 			wrong++;					\
 		if (s > worst) {					\
@@ -174,22 +219,27 @@ static inline int ulp_sweep1_##sfx(const char *name, type (*fn)(type),	\
 		}							\
 	}								\
 	return ulp_verdict(name, wrong, n, worst, max_wrong, max_steps,	\
-			   wx, 0, 1);					\
+			   wx, 0, 1, skipped);				\
 }
 
-#define ULP_DEFINE_SWEEP2(sfx, type, table, steps)			\
+#define ULP_DEFINE_SWEEP2(sfx, type, table, steps, tiny)			\
 static inline int ulp_sweep2_##sfx(const char *name,			\
 				   type (*fn)(type, type),		\
 				   const struct table *t, int n,	\
 				   int max_wrong, int max_steps)	\
 {									\
-	int i, wrong = 0;						\
+	int i, wrong = 0, skipped = 0;					\
 	long worst = 0;							\
 	double wx = 0, wy = 0;						\
 									\
 	for (i = 0; i < n; i++) {					\
-		long s = steps(fn(t[i].x, t[i].y), t[i].want);		\
+		long s;							\
 									\
+		if (ULP_FTZ_SKIP(tiny, t[i].x, t[i].y, t[i].want)) {	\
+			skipped++;					\
+			continue;					\
+		}							\
+		s = steps(fn(t[i].x, t[i].y), t[i].want);		\
 		if (s != 0)						\
 			wrong++;					\
 		if (s > worst) {					\
@@ -199,27 +249,33 @@ static inline int ulp_sweep2_##sfx(const char *name,			\
 		}							\
 	}								\
 	return ulp_verdict(name, wrong, n, worst, max_wrong, max_steps,	\
-			   wx, wy, 2);					\
+			   wx, wy, 2, skipped);				\
 }
 
-ULP_DEFINE_SWEEP1(d, double, ulp_d1, ulp_steps_d)
-ULP_DEFINE_SWEEP1(f, float, ulp_f1, ulp_steps_f)
-ULP_DEFINE_SWEEP1(l, long double, ulp_d1, ulp_steps_l)
-ULP_DEFINE_SWEEP2(d, double, ulp_d2, ulp_steps_d)
-ULP_DEFINE_SWEEP2(f, float, ulp_f2, ulp_steps_f)
+ULP_DEFINE_SWEEP1(d, double, ulp_d1, ulp_steps_d, ulp_tiny_d)
+ULP_DEFINE_SWEEP1(f, float, ulp_f1, ulp_steps_f, ulp_tiny_f)
+ULP_DEFINE_SWEEP1(l, long double, ulp_d1, ulp_steps_l, ulp_tiny_d)
+ULP_DEFINE_SWEEP2(d, double, ulp_d2, ulp_steps_d, ulp_tiny_d)
+ULP_DEFINE_SWEEP2(f, float, ulp_f2, ulp_steps_f, ulp_tiny_f)
 /* Three arguments, for fma. */
 static inline int ulp_sweep3_d(const char *name,
 			       double (*fn)(double, double, double),
 			       const struct ulp_d3 *t, int n,
 			       int max_wrong, int max_steps)
 {
-	int i, wrong = 0;
+	int i, wrong = 0, skipped = 0;
 	long worst = 0;
 	double wx = 0, wy = 0;
 
 	for (i = 0; i < n; i++) {
-		long s = ulp_steps_d(fn(t[i].x, t[i].y, t[i].z), t[i].want);
+		long s;
 
+		if (ULP_FTZ_SKIP(ulp_tiny_d, t[i].x, t[i].y, t[i].want)
+		    || ULP_FTZ_SKIP(ulp_tiny_d, t[i].z, t[i].z, t[i].z)) {
+			skipped++;
+			continue;
+		}
+		s = ulp_steps_d(fn(t[i].x, t[i].y, t[i].z), t[i].want);
 		if (s != 0)
 			wrong++;
 		if (s > worst) {
@@ -229,7 +285,7 @@ static inline int ulp_sweep3_d(const char *name,
 		}
 	}
 	return ulp_verdict(name, wrong, n, worst, max_wrong, max_steps,
-			   wx, wy, 2);
+			   wx, wy, 2, skipped);
 }
 
 
@@ -241,14 +297,18 @@ static inline int ulp_sweep_scaled_d(const char *name, double (*fn)(double),
 				     const struct ulp_d1 *t, int n,
 				     int max_wrong, int max_steps)
 {
-	int i, wrong = 0;
+	int i, wrong = 0, skipped = 0;
 	long worst = 0;
 	double wx = 0;
 
 	for (i = 0; i < n; i++) {
-		long s = ulp_scaled_steps_d(fn(t[i].x), t[i].want,
-					    scale(t[i].x));
+		long s;
 
+		if (ULP_FTZ_SKIP(ulp_tiny_d, t[i].x, t[i].x, t[i].want)) {
+			skipped++;
+			continue;
+		}
+		s = ulp_scaled_steps_d(fn(t[i].x), t[i].want, scale(t[i].x));
 		if (s != 0)
 			wrong++;
 		if (s > worst) {
@@ -257,7 +317,7 @@ static inline int ulp_sweep_scaled_d(const char *name, double (*fn)(double),
 		}
 	}
 	return ulp_verdict(name, wrong, n, worst, max_wrong, max_steps,
-			   wx, 0, 1);
+			   wx, 0, 1, skipped);
 }
 
 static inline int ulp_sweep_scaled_n(const char *name,
@@ -266,14 +326,19 @@ static inline int ulp_sweep_scaled_n(const char *name,
 				     const struct ulp_n1 *t, int n,
 				     int max_wrong, int max_steps)
 {
-	int i, wrong = 0;
+	int i, wrong = 0, skipped = 0;
 	long worst = 0;
 	double wx = 0, wn = 0;
 
 	for (i = 0; i < n; i++) {
-		long s = ulp_scaled_steps_d(fn(t[i].n, t[i].x), t[i].want,
-					    scale(t[i].x));
+		long s;
 
+		if (ULP_FTZ_SKIP(ulp_tiny_d, t[i].x, t[i].x, t[i].want)) {
+			skipped++;
+			continue;
+		}
+		s = ulp_scaled_steps_d(fn(t[i].n, t[i].x), t[i].want,
+				       scale(t[i].x));
 		if (s != 0)
 			wrong++;
 		if (s > worst) {
@@ -283,10 +348,10 @@ static inline int ulp_sweep_scaled_n(const char *name,
 		}
 	}
 	return ulp_verdict(name, wrong, n, worst, max_wrong, max_steps,
-			   wn, wx, 2);
+			   wn, wx, 2, skipped);
 }
 
-ULP_DEFINE_SWEEP2(l, long double, ulp_d2, ulp_steps_l)
+ULP_DEFINE_SWEEP2(l, long double, ulp_d2, ulp_steps_l, ulp_tiny_d)
 
 /* What a special case must raise, beside what it must return.  The two flags
    the C standard fixes for these functions and libm-test.inc knew about; the

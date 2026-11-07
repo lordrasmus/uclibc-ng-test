@@ -271,6 +271,20 @@ if arch("metag"):
             "nptl/tst-cleanupx0-O2")
 
 
+# nds32 with the Andes BSP toolchain (gcc 4.9.3, binutils 2.24; gcc says
+# 4, the linker cannot be asked): ld half-relaxes a TLS descriptor access
+# to a symbol it also reaches through IE -- sethi/ori are turned to the
+# absolute IE GOT slot, the "lw $r15, [$r0 + $gp]; jral $r15" stays -- so
+# the call jumps to garbage.  tst-tls1..3 mix the models on purpose.  At
+# -O2 the same linker defines a shared object's TLS variables in the
+# executable (tst-tls10: TPOFF against a1..a4 with values in the
+# executable; tst-tls12: "BFD (GNU Binutils) 2.24 assertion fail
+# elflink.c:8882", no binary).  Measured 2026-11-07 on Linux 3.4 / qemu.
+if arch("nds32") and int(defined.get("__GNUC__", "0")) < 5:
+    disable("tls/tst-tls1", "tls/tst-tls1-static",
+            "tls/tst-tls2", "tls/tst-tls2-static", "tls/tst-tls3",
+            "tls/tst-tls10-O2", "tls/tst-tls12-O2")
+
 out = [n + "=1" for n in sorted(no)]
 if tests:
     out.append("DISABLED_TESTS=" + ",".join(tests))

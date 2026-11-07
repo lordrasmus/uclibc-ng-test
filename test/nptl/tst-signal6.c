@@ -125,13 +125,14 @@ do_test (void)
     }
 
   struct sigaction sa;
+  int j;
   sa.sa_handler = handler;
   sa.sa_flags = 0;
   /* A thread takes its own signal and sig1 + N; with only the running
      one blocked, the second can arrive while the handler is inside
      printf, and the nested printf breaks the stream state.  */
   sigemptyset (&sa.sa_mask);
-  for (int j = 0; j <= N; ++j)
+  for (j = 0; j <= N; ++j)
     sigaddset (&sa.sa_mask, sig1 + j);
 
   if (sigaction (sig1, &sa, NULL) != 0

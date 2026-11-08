@@ -56,7 +56,7 @@ TESTS := tst-align tst-align2 tst-atfork1 tst-attr1 tst-attr2 tst-attr3	\
 	tst-cancelx18 tst-cancelx20 tst-cancelx21 tst-cleanupx0 tst-cleanupx1 \
 	tst-cleanupx2 tst-cleanupx3 tst-cleanupx4 tst-cond22 tst-cond23 \
 	tst-getpid1 tst-getpid2 tst-getpid3 tst-clone-thread tst-join6 tst-tsd6 \
-	tst-stack-guardsize \
+	tst-stack-guardsize tst-stack-from-elf \
 	tst-oddstacklimit tst-oncex3 tst-oncex4 tst-rwlock2a  \
 	tst-basic7 tst-signal7 tst-vfork1x tst-vfork2x tst-sem10 tst-sem11 \
 	tst-sem12 tst-initializers1-c89 tst-initializers1-c99 \
@@ -104,6 +104,7 @@ CFLAGS_tst-tls4modb.so := -fPIC -DPIC -DSHARED -shared
 
 CFLAGS_tst-fini1mod.so := -fPIC -DPIC -DSHARED -shared
 LDFLAGS_tst-cond11 = -lrt
+LDFLAGS_tst-stack-from-elf = -Wl,-z,stack-size=0x60000
 LDFLAGS_tst-cond19 = -lrt
 
 LDFLAGS_tst-rwlock14 = -lrt

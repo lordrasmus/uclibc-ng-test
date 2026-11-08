@@ -34,6 +34,15 @@
 #include "tst-mqueue.h"
 #include "../test-skeleton.h"
 
+/* Without an MMU nothing protects a guard; uClibc-ng keeps it to one page
+   and pthread_getattr_np reports that.  __ARCH_USE_MMU__ is uClibc-ng's.  */
+#if defined __UCLIBC__ && !defined __ARCH_USE_MMU__
+# define EXPECTED_GUARD(g) \
+  ((g) > (size_t) sysconf (_SC_PAGESIZE) ? (size_t) sysconf (_SC_PAGESIZE) : (g))
+#else
+# define EXPECTED_GUARD(g) (g)
+#endif
+
 #if _POSIX_THREADS
 # include <pthread.h>
 
@@ -242,9 +251,10 @@ do_test (void)
       printf ("fct not called (%d on %d)\n", fct_cnt, __LINE__);
       result = 1;
     }
-  else if (fct_guardsize != 32 * ps)
+  else if (fct_guardsize != EXPECTED_GUARD (32 * ps))
     {
-      printf ("fct_guardsize %zd != %zd\n", fct_guardsize, 32 * ps);
+      printf ("fct_guardsize %zd != %zd\n", fct_guardsize,
+	      (size_t) EXPECTED_GUARD (32 * ps));
       result = 1;
     }
 

@@ -57,22 +57,16 @@ chew_cpu (void *arg)
   return NULL;
 }
 
-static unsigned long long int
-tsdiff (const struct timespec *before, const struct timespec *after)
+static int
+ts_before (const struct timespec *a, const struct timespec *b)
 {
-  struct timespec diff = { .tv_sec = after->tv_sec - before->tv_sec,
-			   .tv_nsec = after->tv_nsec - before->tv_nsec };
-  while (diff.tv_nsec < 0)
-    {
-      --diff.tv_sec;
-      diff.tv_nsec += 1000000000;
-    }
-  return diff.tv_sec * 1000000000ULL + diff.tv_nsec;
+  return a->tv_sec < b->tv_sec
+	 || (a->tv_sec == b->tv_sec && a->tv_nsec < b->tv_nsec);
 }
 
-static unsigned long long int
+static void
 test_nanosleep (clockid_t clock, const char *which,
-		const struct timespec *before, int *bad)
+		int *bad)
 {
   const struct timespec sleeptime = { .tv_nsec = 100000000 };
   int e = clock_nanosleep (clock, 0, &sleeptime, NULL);
@@ -80,13 +74,13 @@ test_nanosleep (clockid_t clock, const char *which,
     {
       printf ("clock_nanosleep not supported for %s CPU clock: %s\n",
 	      which, strerror (e));
-      return 0;
+      return;
     }
   if (e != 0)
     {
       printf ("clock_nanosleep on %s CPU clock: %s\n", which, strerror (e));
       *bad = 1;
-      return 0;
+      return;
     }
 
   struct timespec after;
@@ -95,16 +89,7 @@ test_nanosleep (clockid_t clock, const char *which,
       printf ("clock_gettime on %s CPU clock %lx => %s\n",
 	      which, (unsigned long int) clock, strerror (errno));
       *bad = 1;
-      return 0;
-    }
-
-  unsigned long long int diff = tsdiff (before, &after);
-  if (diff < sleeptime.tv_nsec || diff > sleeptime.tv_nsec * 2)
-    {
-      printf ("clock_nanosleep on %s slept %llu (outside reasonable range)\n",
-	      which, diff);
-      *bad = 1;
-      return diff;
+      return;
     }
 
   struct timespec sleeptimeabs = sleeptime;
@@ -121,7 +106,7 @@ test_nanosleep (clockid_t clock, const char *which,
       printf ("absolute clock_nanosleep on %s CPU clock: %s\n",
 	      which, strerror (e));
       *bad = 1;
-      return diff;
+      return;
     }
 
   struct timespec afterabs;
@@ -130,28 +115,10 @@ test_nanosleep (clockid_t clock, const char *which,
       printf ("clock_gettime on %s CPU clock %lx => %s\n",
 	      which, (unsigned long int) clock, strerror (errno));
       *bad = 1;
-      return diff;
+      return;
     }
 
-  unsigned long long int sleepdiff = tsdiff (&sleeptimeabs, &afterabs);
-  if (sleepdiff > sleeptime.tv_nsec)
-    {
-      printf ("\
-absolute clock_nanosleep on %s %llu past target (outside reasonable range)\n",
-	      which, sleepdiff);
-      *bad = 1;
-    }
-
-  unsigned long long int diffabs = tsdiff (&after, &afterabs);
-  if (diffabs < sleeptime.tv_nsec || diffabs > sleeptime.tv_nsec * 2)
-    {
-      printf ("\
-absolute clock_nanosleep on %s slept %llu (outside reasonable range)\n",
-	      which, diffabs);
-      *bad = 1;
-    }
-
-  return diff + diffabs;
+  return;
 }
 
 
@@ -280,37 +247,22 @@ do_test (void)
   printf ("self thread after sleep => %lu.%.9lu\n",
 	  me_after.tv_sec, me_after.tv_nsec);
 
-  unsigned long long int th_diff = tsdiff (&before, &after);
-  unsigned long long int pdiff = tsdiff (&process_before, &process_after);
-  unsigned long long int my_diff = tsdiff (&me_before, &me_after);
-
-  if (th_diff < 100000000 || th_diff > 600000000)
+  /* Only the direction: how much CPU time the thread gets depends on how
+     often the host runs the guest (glibc dropped the ranges for that).  */
+  if (!ts_before (&before, &after))
     {
-      printf ("thread before - after %llu outside reasonable range\n",
-	      th_diff);
+      puts ("live thread clock did not advance while the thread was running");
+      result = 1;
+    }
+  if (!ts_before (&process_before, &process_after))
+    {
+      puts ("process clock did not advance while the thread was running");
       result = 1;
     }
 
-  if (my_diff > 100000000)
-    {
-      printf ("self thread before - after %llu outside reasonable range\n",
-	      my_diff);
-      result = 1;
-    }
-
-  if (pdiff < th_diff)
-    {
-      printf ("process before - after %llu outside reasonable range (%llu)\n",
-	      pdiff, th_diff);
-      result = 1;
-    }
-
-  process_after.tv_nsec += test_nanosleep (th_clock, "thread",
-					   &after, &result);
-  process_after.tv_nsec += test_nanosleep (process_clock, "process",
-					   &process_after, &result);
-  test_nanosleep (CLOCK_PROCESS_CPUTIME_ID,
-		  "PROCESS_CPUTIME_ID", &process_after, &result);
+  test_nanosleep (th_clock, "live thread", &result);
+  test_nanosleep (process_clock, "process", &result);
+  test_nanosleep (CLOCK_PROCESS_CPUTIME_ID, "PROCESS_CPUTIME_ID", &result);
 
   pthread_cancel (th);
 

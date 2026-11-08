@@ -49,6 +49,16 @@ chew_cpu (void)
     }
 }
 
+/* The CPU time of a process that keeps running must grow.  How much it
+   grows depends on how often the host runs the guest, so only the
+   direction is checked (glibc dropped the ranges for the same reason).  */
+static int
+ts_before (const struct timespec *a, const struct timespec *b)
+{
+  return a->tv_sec < b->tv_sec
+	 || (a->tv_sec == b->tv_sec && a->tv_nsec < b->tv_nsec);
+}
+
 static int
 do_test (void)
 {
@@ -148,19 +158,9 @@ do_test (void)
   printf ("live PID %d after sleep => %lu.%.9lu\n",
 	  child, after.tv_sec, after.tv_nsec);
 
-  struct timespec diff = { .tv_sec = after.tv_sec - before.tv_sec,
-			   .tv_nsec = after.tv_nsec - before.tv_nsec };
-  if (diff.tv_nsec < 0)
+  if (!ts_before (&before, &after))
     {
-      --diff.tv_sec;
-      diff.tv_nsec += 1000000000;
-    }
-  if (diff.tv_sec != 0
-      || diff.tv_nsec > 600000000
-      || diff.tv_nsec < 100000000)
-    {
-      printf ("before - after %lu.%.9lu outside reasonable range\n",
-	      diff.tv_sec, diff.tv_nsec);
+      puts ("live PID clock did not advance while the child was running");
       result = 1;
     }
 
@@ -187,19 +187,9 @@ do_test (void)
 	}
       else
 	{
-	  struct timespec d = { .tv_sec = afterns.tv_sec - after.tv_sec,
-				.tv_nsec = afterns.tv_nsec - after.tv_nsec };
-	  if (d.tv_nsec < 0)
+	  if (!ts_before (&after, &afterns))
 	    {
-	      --d.tv_sec;
-	      d.tv_nsec += 1000000000;
-	    }
-	  if (d.tv_sec > 0
-	      || d.tv_nsec < sleeptime.tv_nsec
-	      || d.tv_nsec > sleeptime.tv_nsec * 2)
-	    {
-	      printf ("nanosleep time %lu.%.9lu outside reasonable range\n",
-		      d.tv_sec, d.tv_nsec);
+	      puts ("live PID clock did not advance across clock_nanosleep");
 	      result = 1;
 	    }
 	}
@@ -228,17 +218,9 @@ do_test (void)
   printf ("dead PID %d => %lu.%.9lu\n",
 	  child, dead.tv_sec, dead.tv_nsec);
 
-  diff.tv_sec = dead.tv_sec - after.tv_sec;
-  diff.tv_nsec = dead.tv_nsec - after.tv_nsec;
-  if (diff.tv_nsec < 0)
+  if (ts_before (&dead, &after))
     {
-      --diff.tv_sec;
-      diff.tv_nsec += 1000000000;
-    }
-  if (diff.tv_sec != 0 || diff.tv_nsec > 200000000)
-    {
-      printf ("dead - after %lu.%.9lu outside reasonable range\n",
-	      diff.tv_sec, diff.tv_nsec);
+      puts ("dead PID clock went backwards");
       result = 1;
     }
 

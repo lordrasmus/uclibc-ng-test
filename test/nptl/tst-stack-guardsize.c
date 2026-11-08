@@ -26,6 +26,14 @@
 # define SLACK	(16 * 1024)
 #endif
 
+/* Without an MMU nothing protects a guard; uClibc-ng keeps it to one page
+   and pthread_getattr_np reports that.  __ARCH_USE_MMU__ is uClibc-ng's.  */
+#if defined __UCLIBC__ && !defined __ARCH_USE_MMU__
+# define EXPECTED_GUARD(g, ps)	((g) > (ps) ? (ps) : (g))
+#else
+# define EXPECTED_GUARD(g, ps)	(g)
+#endif
+
 static void *use_stack(void *arg)
 {
 	size_t n = (size_t) arg;
@@ -87,8 +95,9 @@ static int do_test(void)
 			err = 1;
 		} else {
 			pthread_attr_getguardsize(&r, &got);
-			if (got != guard) {
-				printf("guardsize %zu, want %zu\n", got, guard);
+			if (got != EXPECTED_GUARD(guard, ps)) {
+				printf("guardsize %zu, want %zu\n", got,
+				       (size_t) EXPECTED_GUARD(guard, ps));
 				err = 1;
 			}
 			pthread_attr_getstacksize(&r, &got);

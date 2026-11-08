@@ -30,6 +30,15 @@
 #include <unistd.h>
 #include "../test-skeleton.h"
 
+/* Without an MMU nothing protects a guard; uClibc-ng keeps it to one page
+   and pthread_getattr_np reports that.  __ARCH_USE_MMU__ is uClibc-ng's.  */
+#if defined __UCLIBC__ && !defined __ARCH_USE_MMU__
+# define EXPECTED_GUARD(g) \
+  ((g) > (size_t) sysconf (_SC_PAGESIZE) ? (size_t) sysconf (_SC_PAGESIZE) : (g))
+#else
+# define EXPECTED_GUARD(g) (g)
+#endif
+
 static void *
 tf (void *arg)
 {
@@ -113,7 +122,7 @@ tf (void *arg)
 	  error (0, err, "pthread_attr_getguardsize failed");
 	  result = tf;
 	}
-      else if (guardsize1 != guardsize2)
+      else if (guardsize1 != EXPECTED_GUARD (guardsize2))
 	{
 	  error (0, 0, "guardsize differs %zd != %zd",
 		 guardsize1, guardsize2);

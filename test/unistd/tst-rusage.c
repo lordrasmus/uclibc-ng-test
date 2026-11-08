@@ -201,10 +201,16 @@ do_test (void)
       return 1;
     }
 
-  if (ru4.ru_utime.tv_sec != ruc.ru_utime.tv_sec
-      || ru4.ru_utime.tv_usec != ruc.ru_utime.tv_usec
-      || ru4.ru_stime.tv_sec != ruc.ru_stime.tv_sec
-      || ru4.ru_stime.tv_usec != ruc.ru_stime.tv_usec)
+  /* Not equal, ordered: the kernel adds the child to RUSAGE_CHILDREN
+     first and reads it again for wait4() (wait_task_zombie), and on SMP
+     the child may still be finishing its last switch on another CPU in
+     between.  Both readings are monotonic, so CHILDREN never exceeds the
+     wait4 value; a gap of a second would mean a wrong field, not a race.  */
+  long long u4 = ru4.ru_utime.tv_sec * 1000000LL + ru4.ru_utime.tv_usec;
+  long long s4 = ru4.ru_stime.tv_sec * 1000000LL + ru4.ru_stime.tv_usec;
+  long long uc = ruc.ru_utime.tv_sec * 1000000LL + ruc.ru_utime.tv_usec;
+  long long sc = ruc.ru_stime.tv_sec * 1000000LL + ruc.ru_stime.tv_usec;
+  if (uc > u4 || sc > s4 || u4 - uc > 1000000 || s4 - sc > 1000000)
     {
       printf ("wait4 and RUSAGE_CHILDREN disagree about the one child:\n"
 	      "  wait4    utime %lld.%06lld  stime %lld.%06lld\n"

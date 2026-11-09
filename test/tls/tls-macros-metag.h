@@ -2,8 +2,7 @@
    up.  The tests are also built without -fPIC: there the pointer comes from
    the prologue's own PC-relative pair (the assembler takes
    __GLOBAL_OFFSET_TABLE__ PC-relative), in a scratch register of the A0
-   unit to go with CPC0; initial-exec takes the offset as an immediate
-   (@TLSIENONPIC), as gcc does.  */
+   unit to go with CPC0.  */
 #ifdef __PIC__
 # define TLS_GOT(reg) "MOV " reg ", A1LbP\n\t"
 # define TLS_GOT_CLOBBER
@@ -45,13 +44,15 @@
      __result = __metag_load_tp();			\
      __result + __rel; })
 #else
+/* As gcc does since it was fixed: an initial-exec offset is known at link
+   time only for a variable of the executable, so it comes from the GOT.  */
 # define TLS_IE(x)					\
   ({ void *__result;					\
      unsigned long __rel;				\
      extern void *__metag_load_tp (void);		\
-     __asm__ ("MOVT %0,#HI(" TLS_ASM_NAME (x) "@TLSIENONPIC)\n\t"	\
-	  "ADD %0,%0,#LO(" TLS_ASM_NAME (x) "@TLSIENONPIC)"		\
-	  : "=d" (__rel));				\
+     __asm__ (TLS_GOT ("%0")				\
+	  "GETD %0,[A0.2+#(" TLS_ASM_NAME (x) "@TLSIE)]"		\
+	  : "=d" (__rel) : TLS_GOT_CLOBBER);		\
      __result = __metag_load_tp();			\
      __result + __rel; })
 #endif

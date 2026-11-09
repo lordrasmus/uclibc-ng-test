@@ -39,6 +39,10 @@
 # define TRAP() __asm__ __volatile__ ("breakpoint")
 #elif defined __kvx__
 # define TRAP() __asm__ __volatile__ (";;\n\terrop\n\t;;")
+#elif defined __metag__
+/* gcc 4.2's __builtin_trap is a call to abort.  The kernel raises SIGTRAP
+   for its compiled-in breakpoint, __METAG_SW_PERM_BREAK.  */
+# define TRAP() __asm__ __volatile__ ("SWITCH #0x400002")
 #else
 # define TRAP() __builtin_trap ()
 #endif

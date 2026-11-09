@@ -54,8 +54,10 @@ handler (int sig, siginfo_t *si, void *ctx)
 {
   ucontext_t *uc = ctx;
 
-  (void) sig;
   (void) si;
+  if (sig == SIGABRT)
+    /* gcc has no trap instruction here and called abort.  */
+    siglongjmp (jb, 2);
   if (trapped)
     {
       /* The trap again: the context change did not take, and returning
@@ -81,7 +83,7 @@ handler (int sig, siginfo_t *si, void *ctx)
 int
 main (void)
 {
-  static const int sigs[] = { SIGILL, SIGTRAP, SIGSEGV, SIGBUS, SIGFPE };
+  static const int sigs[] = { SIGILL, SIGTRAP, SIGSEGV, SIGBUS, SIGFPE, SIGABRT };
   void (*volatile fn) (unsigned long) = trap_fn;
   struct sigaction sa;
   unsigned int i;
@@ -99,17 +101,15 @@ main (void)
 	return 1;
       }
 
-  if (sigsetjmp (jb, 1) == 0)
+  switch (sigsetjmp (jb, 1))
     {
+    case 0:
       fn (ARG_VALUE);
-      if (!trapped)
-	{
-	  /* gcc has no trap instruction here and called abort.  */
-	  puts ("SKIP: __builtin_trap is abort here");
-	  return 0;
-	}
       puts ("FAIL: the trap returned to trap_fn's caller");
       return 1;
+    case 2:
+      puts ("SKIP: __builtin_trap is abort here");
+      return 0;
     }
 
 #ifndef UC_ENTER

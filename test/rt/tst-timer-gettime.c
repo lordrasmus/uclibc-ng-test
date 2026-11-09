@@ -12,6 +12,11 @@
 
 static int err;
 
+/* Without high resolution timers the kernel rounds the expiry up to the
+   next tick and reports the remaining time from there, up to 10 ms over
+   the value set at 100 Hz (m68k-68000: 60.509).  */
+#define TICK_SLACK_NS 11000000LL
+
 /* Is TS within LO_NS..HI_NS?  Seconds first, so the fill pattern cannot
    overflow the multiplication.  */
 static void check_ts(const char *what, const struct timespec *ts,
@@ -74,7 +79,8 @@ int main(void)
 	} else {
 		/* The interval comes back as set, the value counts down.  */
 		check_ts("armed interval", &got.it_interval, 1250000000, 1250000000);
-		check_ts("armed value", &got.it_value, 1, 60500000000LL);
+		check_ts("armed value", &got.it_value, 1,
+			 60500000000LL + TICK_SLACK_NS);
 	}
 
 	memset(&got, 0xa5, sizeof got);
@@ -83,7 +89,8 @@ int main(void)
 		err = 1;
 	} else {
 		check_ts("old interval", &got.it_interval, 1250000000, 1250000000);
-		check_ts("old value", &got.it_value, 1, 60500000000LL);
+		check_ts("old value", &got.it_value, 1,
+			 60500000000LL + TICK_SLACK_NS);
 	}
 
 	memset(&got, 0xa5, sizeof got);

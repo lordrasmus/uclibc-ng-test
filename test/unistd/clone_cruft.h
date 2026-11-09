@@ -11,7 +11,7 @@ extern int __clone2 (int (*__fn) (void *__arg), void *__child_stack_base,
 # define do_clone(fn, stack, flags, arg) \
 	__clone2(fn, stack, crappy_sizeof(stack), flags, arg, NULL, NULL, NULL)
 
-#elif defined __hppa__
+#elif defined __hppa__ || defined __metag__
 
 # define do_clone(fn, stack, flags, arg) \
 	clone(fn, stack, flags, arg)

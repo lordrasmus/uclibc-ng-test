@@ -33,7 +33,7 @@
 # define CHILD_STACK_SIZE (32 * 1024)
 #endif
 
-#if defined(__hppa__)
+#if defined(__hppa__) || defined(__metag__)
 #define _STACK_GROWS_UP		1
 #else
 #define _STACK_GROWS_DOWN	1

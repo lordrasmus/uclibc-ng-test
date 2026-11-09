@@ -60,7 +60,7 @@ do_test (void)
 	  puts ("skip: filesystem does not support fallocate");
 	  return 23;  /* testrunner: 23 == SKIP */
 	}
-      puts ("1st posix_fallocate call failed");
+      printf ("1st posix_fallocate call failed: %s\n", strerror (ret));
       return 1;
     }
 

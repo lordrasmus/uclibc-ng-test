@@ -65,7 +65,7 @@ do_test (void)
 	  puts ("skip: filesystem does not support fallocate");
 	  return 23;  /* testrunner: 23 == SKIP */
 	}
-      puts ("1st fallocate call failed");
+      printf ("1st fallocate call failed: %s\n", strerror (errno));
       return 1;
     }
 

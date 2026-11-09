@@ -94,6 +94,18 @@ main (void)
       unlink (NAME);
       return 23;		/* SKIP */
     }
+  /* Before the call went through vfs_fadvise, the kernel refused a mapping
+     without ->readpage and ->readpages with EINVAL -- tmpfs on Linux 4.4,
+     for one (force_page_cache_readahead).  Nothing else on that path says
+     EINVAL: a wrong descriptor is EBADF, and the offset and length are not
+     checked at all.  */
+  if (r < 0 && errno == EINVAL)
+    {
+      puts ("skip: the filesystem cannot read ahead");
+      close (fd);
+      unlink (NAME);
+      return 23;		/* SKIP */
+    }
 
   /* These offsets are not verified -- see the top of the file.  They are here
      so a wrapper that turns a large offset into an error is caught.  */

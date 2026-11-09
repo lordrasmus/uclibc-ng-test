@@ -45,14 +45,20 @@
      __result + __rel; })
 #else
 /* As gcc does since it was fixed: an initial-exec offset is known at link
-   time only for a variable of the executable, so it comes from the GOT.  */
+   time only for a variable of the executable, so it comes from the GOT.
+   The large-offset GETD exists for A1LbP as a base, not for A0.2 -- gas
+   turns [A0.2+#...] into another instruction without a word -- so borrow
+   A1LbP for it, set up as the prologue of PIC code does.  */
 # define TLS_IE(x)					\
   ({ void *__result;					\
-     unsigned long __rel;				\
+     unsigned long __rel, __save;			\
      extern void *__metag_load_tp (void);		\
-     __asm__ (TLS_GOT ("%0")				\
-	  "GETD %0,[A0.2+#(" TLS_ASM_NAME (x) "@TLSIE)]"		\
-	  : "=d" (__rel) : TLS_GOT_CLOBBER);		\
+     __asm__ ("MOV %1, A1LbP\n\t"				\
+	  "ADDT A1LbP, CPC1, #HI(__GLOBAL_OFFSET_TABLE__)\n\t"	\
+	  "ADD A1LbP, A1LbP, #LO(__GLOBAL_OFFSET_TABLE__ + 4)\n\t"	\
+	  "GETD %0, [A1LbP+#(" TLS_ASM_NAME (x) "@TLSIE)]\n\t"	\
+	  "MOV A1LbP, %1"					\
+	  : "=&d" (__rel), "=&d" (__save));		\
      __result = __metag_load_tp();			\
      __result + __rel; })
 #endif

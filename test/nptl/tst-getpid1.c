@@ -76,7 +76,6 @@ do_test (void)
       printf("clone failed: %m\n");
       return 1;
     }
-  printf ("new thread: %d\n", (int) p);
 
   siginfo_t si;
   do
@@ -95,6 +94,11 @@ do_test (void)
       kill (p, SIGKILL);
       return 1;
     }
+  /* Only now: with CLONE_VM the child writes to the same stdout, and
+     without pthread_create there is no stdio locking (none that would
+     tell the two apart either, they share the thread pointer).  */
+  printf ("new thread: %d\n", (int) p);
+
   if (!WIFEXITED (e))
     {
       if (WIFSIGNALED (e))

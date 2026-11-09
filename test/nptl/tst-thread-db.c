@@ -7,7 +7,8 @@
    The parent plays the debugger: a forked child starts some threads, each
    reports its kernel tid, pthread_self () and thread pointer, and the
    parent attaches to all of them with ptrace and asks libthread_db.  As in
-   gdb, registers come from PTRACE_GETREGSET.  For the ports that describe
+   gdb, registers come from PTRACE_GETREGSET, or PTRACE_GETREGS on kernels
+   without regsets.  For the ports that describe
    the thread pointer as a constant offset (CONST_THREAD_AREA), gdb fetches
    the thread pointer with a port-specific ptrace request; the test takes
    the value the thread reported instead, since what is under test is the
@@ -298,8 +299,23 @@ ps_err_e ps_lgetregs (struct ps_prochandle *h, lwpid_t lwp,
   struct iovec iov = { regs, sizeof (prgregset_t) };
 
   (void) h;
-  return ptrace (PTRACE_GETREGSET, lwp, (void *) NT_PRSTATUS, &iov) == 0
-	 ? PS_OK : PS_ERR;
+  if (ptrace (PTRACE_GETREGSET, lwp, (void *) NT_PRSTATUS, &iov) == 0)
+    return PS_OK;
+#ifdef PT_GETREGS
+  /* Kernels without regsets (the Andes nds32 3.4 BSP) only have
+     PTRACE_GETREGS, as gdb falls back to.  It copies the whole pt_regs,
+     which may be larger than prgregset_t: read into a roomy buffer.  */
+  {
+    static long buf[256];
+
+    if (ptrace (PTRACE_GETREGS, lwp, NULL, buf) == 0)
+      {
+	memcpy (regs, buf, sizeof (prgregset_t));
+	return PS_OK;
+      }
+  }
+#endif
+  return PS_ERR;
 }
 
 ps_err_e ps_lsetregs (struct ps_prochandle *h, lwpid_t lwp,

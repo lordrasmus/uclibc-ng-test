@@ -3,6 +3,7 @@
 
 TESTS := dltest dltest2 dlstatic test1 test2 test3 dlundef dlafk dladdr \
 	testscope nodelete nodelete1 tst-origin tst-origin-runpath tst-origin-needed \
+	tst-origin-exe-rpath tst-origin-exe-runpath \
 	dladdr-pie dltest-pie dlundef-pie
 
 # test3.c asks features.h itself.  The suite never reads uClibc's .config, so
@@ -38,6 +39,10 @@ LDFLAGS_tst-origin-runpath := -ldl -Wl,--enable-new-dtags \
 	-Wl,-rpath,\$$ORIGIN/testlib
 LDFLAGS_tst-origin-needed := neededlib/libtstneeded.so -Wl,--enable-new-dtags \
 	-Wl,-rpath,\$$ORIGIN/neededlib
+LDFLAGS_tst-origin-exe-rpath := -ldl -Wl,--disable-new-dtags \
+	-Wl,-rpath,\$$ORIGIN/fbr
+LDFLAGS_tst-origin-exe-runpath := -ldl -Wl,--enable-new-dtags \
+	-Wl,-rpath,\$$ORIGIN/fbn
 
 DEBUG_LIBS := X
 WRAPPER := env $(DEBUG_LIBS)=all LD_LIBRARY_PATH="$$PWD:.:$(LD_LIBRARY_PATH)"
@@ -58,7 +63,25 @@ neededlib/libtstneeded.so: libtstneeded.c | neededlib
 	$(Q)$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -fPIC -shared $< -o $@ \
 		-Wl,-soname,libtstneeded.so $(LDFLAGS) $(EXTRA_LIBS)
 
-EXTRA_DIRS := testlib neededlib
+fbr fbn:
+	@mkdir $@
+
+# libfb?1.so needs libfb?2.so and has no path of its own: the second one is
+# found only through the executable's paths.
+fbr/libfbr2.so fbn/libfbn2.so: libfb2.c | fbr fbn
+	$(showlink)
+	$(Q)$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -fPIC -shared $< -o $@ \
+		-Wl,-soname,$(notdir $@) $(LDFLAGS) $(EXTRA_LIBS)
+
+fbr/libfbr1.so: libfb1.c fbr/libfbr2.so
+fbn/libfbn1.so: libfb1.c fbn/libfbn2.so
+fbr/libfbr1.so fbn/libfbn1.so:
+	$(showlink)
+	$(Q)$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -fPIC -shared $< -o $@ \
+		-Wl,-soname,$(notdir $@) $(LDFLAGS) $(EXTRA_LIBS) \
+		$(dir $@)$(subst 1.so,2.so,$(notdir $@))
+
+EXTRA_DIRS := testlib neededlib fbr fbn
 
 # Build libC.so without -mprefergot compilation flag to force a
 # R_SH_JMP_SLOT relocation instead of R_SH_GLOB_DAT for _libC_fini. This is
@@ -89,6 +112,8 @@ test3: libtest1.so libtest2.so
 tst-origin: testlib/libtest31.so
 tst-origin-runpath: testlib/libtest31.so
 tst-origin-needed: neededlib/libtstneeded.so
+tst-origin-exe-rpath: fbr/libfbr1.so
+tst-origin-exe-runpath: fbn/libfbn1.so
 libtest1.so: libtest2.so
 libB.so: libC.so
 libA.so: libB.so

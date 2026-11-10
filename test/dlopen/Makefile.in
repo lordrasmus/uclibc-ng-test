@@ -2,7 +2,7 @@
 # Licensed under the LGPL v2.1, see the file COPYING.LIB in this tarball.
 
 TESTS := dltest dltest2 dlstatic test1 test2 test3 dlundef dlafk dladdr \
-	testscope nodelete nodelete1 tst-origin \
+	testscope nodelete nodelete1 tst-origin tst-origin-runpath tst-origin-needed \
 	dladdr-pie dltest-pie dlundef-pie
 
 # test3.c asks features.h itself.  The suite never reads uClibc's .config, so
@@ -34,6 +34,10 @@ LDFLAGS_test3    := -ldl ./libtest1.so ./libtest2.so -Wl,-rpath,.
 LDFLAGS_dladdr   := -ldl
 LDFLAGS_testscope:= -ldl
 LDFLAGS_tst-origin:= -ldl -Wl,-rpath,\$$ORIGIN/testlib
+LDFLAGS_tst-origin-runpath := -ldl -Wl,--enable-new-dtags \
+	-Wl,-rpath,\$$ORIGIN/testlib
+LDFLAGS_tst-origin-needed := neededlib/libtstneeded.so -Wl,--enable-new-dtags \
+	-Wl,-rpath,\$$ORIGIN/neededlib
 
 DEBUG_LIBS := X
 WRAPPER := env $(DEBUG_LIBS)=all LD_LIBRARY_PATH="$$PWD:.:$(LD_LIBRARY_PATH)"
@@ -44,7 +48,17 @@ testlib:
 testlib/libtest31.so: libtest3.so | testlib
 	@cp $^ $@
 
-EXTRA_DIRS := testlib
+neededlib:
+	@mkdir $@
+
+# Built in place, with the soname alone, and nowhere else: a copy next to
+# the test would be found through LD_LIBRARY_PATH="$$PWD".
+neededlib/libtstneeded.so: libtstneeded.c | neededlib
+	$(showlink)
+	$(Q)$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -fPIC -shared $< -o $@ \
+		-Wl,-soname,libtstneeded.so $(LDFLAGS) $(EXTRA_LIBS)
+
+EXTRA_DIRS := testlib neededlib
 
 # Build libC.so without -mprefergot compilation flag to force a
 # R_SH_JMP_SLOT relocation instead of R_SH_GLOB_DAT for _libC_fini. This is
@@ -73,6 +87,8 @@ test1: libtest1.so
 test2: libtest1.so libtest2.so
 test3: libtest1.so libtest2.so
 tst-origin: testlib/libtest31.so
+tst-origin-runpath: testlib/libtest31.so
+tst-origin-needed: neededlib/libtstneeded.so
 libtest1.so: libtest2.so
 libB.so: libC.so
 libA.so: libB.so

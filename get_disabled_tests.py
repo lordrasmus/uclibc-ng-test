@@ -183,6 +183,17 @@ if uclibc and not is_set("UCLIBC_HAS_FLOATS"):
 # tst-fmon.sh; neither is here, and run without arguments it crashes.
 disable("locale/tst-fmon")
 
+# nptl/tst-clock2 asks that each thread's CPU clock be 0.1 s ahead of the
+# next, and makes the gap by sleeping -- but nanosleep spends wall time, not
+# CPU time, so the gap never appears.  glibc fails it the same way (measured
+# 2026-11-24 on x86_64, three runs: 0.002 s where 0.1 s is asked) and has
+# taken it out of its own build: nptl/tst-clock2.c sits in the tree but in no
+# Makefile, and glibc's time/tst-clock2.c is a different test, about
+# CLOCK_MONOTONIC.  musl's libc-test only checks that CLOCK_THREAD_CPUTIME_ID
+# and pthread_getcpuclockid exist.  The clocks themselves are fine here:
+# measured on i686 under qemu they do differ per thread, by 0.029 s.
+disable("nptl/tst-clock2")
+
 # Need files the rootfs does not carry.  collate-test and xfrm-test take a
 # random seed and a word list on stdin and are judged against a reference
 # output; tst-digits and tst-trans need glibc's test locales "test7" and

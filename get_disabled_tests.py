@@ -167,7 +167,8 @@ if uclibc and is_set("UCLIBC_HAS_LINUXTHREADS"):
 if uclibc and not is_set("UCLIBC_HAS_THREADS_NATIVE"):
     disable(*["rt/" + t for t in (
         "tst-aio", "tst-aio2", "tst-aio3", "tst-aio5", "tst-aio6", "tst-aio7",
-        "tst-aio8", "tst-aio9", "tst-aio10", "tst-aio64")])
+        "tst-aio8", "tst-aio9", "tst-aio10", "tst-aio64",
+        "tst-aio-cancel", "tst-aio-lio", "tst-aio-suspend")])
 
 # locale_t, newlocale() and uselocale() exist only with UCLIBC_HAS_XLOCALE.
 if uclibc and not is_set("UCLIBC_HAS_XLOCALE"):

@@ -12,6 +12,7 @@
 #include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/resource.h>
 #include <sys/wait.h>
@@ -95,24 +96,27 @@ static int l_wait(void)
 	return 0;
 }
 
+static void *late_writer(void *arg)
+{
+	usleep(1500000);
+	write(*(int *)arg, "12345678", 8);
+	return 0;
+}
+
 /* LIO_WAIT must sleep, not spin.  */
 static int l_wait_cpu(void)
 {
 	int p[2]; struct aiocb c1, *list[1] = { &c1 };
 	struct rusage ru;
+	pthread_t t;
 	long ms;
 	char buf[8];
 
 	if (pipe(p)) return 90;
-	switch (fork()) {
-	case -1: return 90;
-	case 0:
-		usleep(1500000);
-		write(p[1], "12345678", 8);
-		_exit(0);
-	}
+	if (pthread_create(&t, 0, late_writer, &p[1])) return 90;
 	cb_init(&c1, p[0], buf, 8, LIO_READ);
 	if (lio_listio(LIO_WAIT, list, 1, 0)) return 1;
+	pthread_join(t, 0);
 	getrusage(RUSAGE_SELF, &ru);
 	ms = ru.ru_utime.tv_sec * 1000 + ru.ru_utime.tv_usec / 1000
 	   + ru.ru_stime.tv_sec * 1000 + ru.ru_stime.tv_usec / 1000;
@@ -332,20 +336,39 @@ static const struct { const char *name; int (*fn)(void); } cases[] = {
 	{ "*64 names",		l_lfs64_names },
 };
 
-int main(void)
+/* The child runs one case in a fresh image of this program: vfork and
+   exec work without an MMU, fork does not.  */
+static pid_t run_case(char *self, size_t i)
+{
+	char num[16], *args[3] = { self, num, 0 };
+	pid_t pid;
+
+	snprintf(num, sizeof num, "%zu", i);
+	pid = vfork();
+	if (pid == 0) {
+		execv("/proc/self/exe", args);
+		execv(self, args);
+		_exit(127);
+	}
+	return pid;
+}
+
+int main(int argc, char **argv)
 {
 	size_t i;
 	int bad = 0;
 
 	memset(fill, 'A', sizeof fill);
+	if (argc == 2) {
+		i = strtoul(argv[1], 0, 10);
+		return i < sizeof cases / sizeof cases[0] ? cases[i].fn() : 99;
+	}
 	setvbuf(stdout, 0, _IOLBF, 0);
 	for (i = 0; i < sizeof cases / sizeof cases[0]; i++) {
-		pid_t pid = fork();
+		pid_t pid = run_case(argv[0], i);
 		int st, k;
 
-		if (pid < 0) { perror("fork"); return 1; }
-		if (pid == 0)
-			_exit(cases[i].fn());
+		if (pid < 0) { perror("vfork"); return 1; }
 		for (k = 0; k < 150; k++) {	/* 15 s */
 			usleep(100000);
 			if (waitpid(pid, &st, WNOHANG) == pid)

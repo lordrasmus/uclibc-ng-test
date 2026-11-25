@@ -10,6 +10,7 @@
 #include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -256,20 +257,39 @@ static const struct { const char *name; int (*fn)(void); } cases[] = {
 	{ "notify signal mask",	c_notify_mask },
 };
 
-int main(void)
+/* The child runs one case in a fresh image of this program: vfork and
+   exec work without an MMU, fork does not.  */
+static pid_t run_case(char *self, size_t i)
+{
+	char num[16], *args[3] = { self, num, 0 };
+	pid_t pid;
+
+	snprintf(num, sizeof num, "%zu", i);
+	pid = vfork();
+	if (pid == 0) {
+		execv("/proc/self/exe", args);
+		execv(self, args);
+		_exit(127);
+	}
+	return pid;
+}
+
+int main(int argc, char **argv)
 {
 	size_t i;
 	int bad = 0;
 
 	memset(fill, 'A', sizeof fill);
+	if (argc == 2) {
+		i = strtoul(argv[1], 0, 10);
+		return i < sizeof cases / sizeof cases[0] ? cases[i].fn() : 99;
+	}
 	setvbuf(stdout, 0, _IOLBF, 0);
 	for (i = 0; i < sizeof cases / sizeof cases[0]; i++) {
-		pid_t pid = fork();
+		pid_t pid = run_case(argv[0], i);
 		int st, k;
 
-		if (pid < 0) { perror("fork"); return 1; }
-		if (pid == 0)
-			_exit(cases[i].fn());
+		if (pid < 0) { perror("vfork"); return 1; }
 		for (k = 0; k < 150; k++) {	/* 15 s */
 			usleep(100000);
 			if (waitpid(pid, &st, WNOHANG) == pid)

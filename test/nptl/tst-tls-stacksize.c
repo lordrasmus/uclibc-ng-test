@@ -23,8 +23,21 @@
 #define TLS_ALIGN 4096
 __thread char aligned_tls[16] __attribute__ ((aligned (TLS_ALIGN))) = { 1 };
 
+/* Room for the frames of start_thread and measure, which come out of
+   the stack the caller asked for.  The losses this test is after are
+   up to TLS_ALIGN - 1 bytes or the whole TLS block.  */
+#define FRAMES 1024
+
 static size_t want;
 static int bad;
+
+/* hppa and metag grow their stacks up.  */
+static int __attribute__ ((noinline)) grows_up (char *outer)
+{
+  char inner;
+
+  return &inner > outer;
+}
 
 static void *measure (void *arg)
 {
@@ -44,9 +57,14 @@ static void *measure (void *arg)
   pthread_attr_getguardsize (&at, &guard);
 
   /* getstack reports the whole mapping minus the guard; what the thread
-     may use is what lies below its own frame.  */
+     may use lies beyond its own frame: down to LOW, or up to the
+     descriptor, which is what pthread_t is here (the guard is 0).  */
   {
-    long usable = &here - (char *) low;
+    long usable = grows_up (&here)
+		  ? (char *) pthread_self () - &here
+		  : &here - (char *) low;
+
+    usable += FRAMES;
 
     if (usable < (long) want)
       {

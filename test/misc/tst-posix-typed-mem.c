@@ -1,8 +1,8 @@
 /* posix_typed_mem_open, posix_typed_mem_get_info and posix_mem_offset.
 
-   Linux has no typed memory objects, so _POSIX_TYPED_MEMORY_OBJECTS is -1
-   and all three report that.  What this checks is that they report it the
-   way the standard says, because the errors are the whole interface here.
+   Linux has no typed memory objects, so all three only report that.  What
+   this checks is that they report it the way the standard says, because
+   the errors are the whole interface here.
 
    The tflag rules are the easy ones to get wrong.  POSIX says "At most,
    one of the following flags ... may be specified", and names EINVAL for
@@ -68,6 +68,17 @@ int main(void)
 	int fd, r;
 	char c;
 
+	/* A libc that has the option says so in one of two ways, and a
+	   program has to accept either: the macro, or sysconf when the
+	   macro is not defined.  uClibc-ng answers neither way today --
+	   <unistd.h> undefines _POSIX_TYPED_MEMORY_OBJECTS and sysconf
+	   has no case for it -- so only a positive answer counts here.  */
+#ifdef _POSIX_TYPED_MEMORY_OBJECTS
+	if (_POSIX_TYPED_MEMORY_OBJECTS > 0) {
+		printf("SKIP: this system has typed memory objects\n");
+		return 0;
+	}
+#endif
 	if (sysconf(_SC_TYPED_MEMORY_OBJECTS) > 0) {
 		printf("SKIP: this system has typed memory objects\n");
 		return 0;

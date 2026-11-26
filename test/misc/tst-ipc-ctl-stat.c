@@ -11,6 +11,21 @@
 #include <sys/shm.h>
 #include <unistd.h>
 
+/* Linux 4.17: like *_STAT without the read permission check.  */
+#ifndef SEM_STAT_ANY
+# define SEM_STAT_ANY 20
+#endif
+#ifndef MSG_STAT_ANY
+# define MSG_STAT_ANY 13
+#endif
+#ifndef SHM_STAT_ANY
+# define SHM_STAT_ANY 15
+#endif
+
+/* Set when the kernel answers a *_STAT_ANY with EINVAL for every index:
+   it predates them, and there is nothing to compare.  */
+static int too_old;
+
 union semun {
     int val;
     struct semid_ds *buf;
@@ -21,7 +36,7 @@ union semun {
    Each object belongs to this test and is idle while both calls run. */
 #define CHECK_FIELD(field) do { \
     if (got.field != want.field) { \
-        printf("%s differs between IPC_STAT and *_STAT\n", #field); \
+        printf("%s differs between IPC_STAT and %s\n", #field, name); \
         bad = 1; \
     } \
 } while (0)
@@ -34,13 +49,13 @@ union semun {
     CHECK_FIELD(field.mode); \
 } while (0)
 
-static int check_sem(int id)
+static int check_sem(int id, int cmd, const char *name)
 {
     struct semid_ds want, got;
     union { struct seminfo info; struct semid_ds ds; } info;
     struct sembuf op = { 0, 1, 0 };
     union semun arg;
-    int index, max, ret, bad = 0;
+    int index, max, ret, bad = 0, einval = 0;
 
     if (semop(id, &op, 1) == -1) {
         perror("semop before SEM_STAT");
@@ -61,7 +76,8 @@ static int check_sem(int id)
     for (index = 0; index <= max; index++) {
         memset(&got, 0, sizeof got);
         arg.buf = &got;
-        ret = semctl(index, 0, SEM_STAT, arg);
+        ret = semctl(index, 0, cmd, arg);
+        einval += ret == -1 && errno == EINVAL;
         if (ret != id)
             continue;
         CHECK_PERM(sem_perm);
@@ -70,16 +86,20 @@ static int check_sem(int id)
         CHECK_FIELD(sem_ctime);
         return bad;
     }
-    printf("SEM_STAT did not find semaphore id %d\n", id);
+    if (einval == max + 1 && cmd == SEM_STAT_ANY) {
+        too_old = 1;
+        return 0;
+    }
+    printf("%s did not find semaphore id %d\n", name, id);
     return 1;
 }
 
-static int check_msg(int id)
+static int check_msg(int id, int cmd, const char *name)
 {
     struct msqid_ds want, got;
     union { struct msginfo info; struct msqid_ds ds; } info;
     struct { long type; char text[7]; } msg = { 1, "abcdef" };
-    int index, max, ret, bad = 0;
+    int index, max, ret, bad = 0, einval = 0;
 
     /* Leave one message queued, with both send and receive times set. */
     if (msgsnd(id, &msg, sizeof msg.text, 0) == -1
@@ -100,7 +120,8 @@ static int check_msg(int id)
     }
     for (index = 0; index <= max; index++) {
         memset(&got, 0, sizeof got);
-        ret = msgctl(index, MSG_STAT, &got);
+        ret = msgctl(index, cmd, &got);
+        einval += ret == -1 && errno == EINVAL;
         if (ret != id)
             continue;
         CHECK_PERM(msg_perm);
@@ -114,15 +135,19 @@ static int check_msg(int id)
         CHECK_FIELD(msg_ctime);
         return bad;
     }
-    printf("MSG_STAT did not find message queue id %d\n", id);
+    if (einval == max + 1 && cmd == MSG_STAT_ANY) {
+        too_old = 1;
+        return 0;
+    }
+    printf("%s did not find message queue id %d\n", name, id);
     return 1;
 }
 
-static int check_shm(int id)
+static int check_shm(int id, int cmd, const char *name)
 {
     struct shmid_ds want, got;
     union { struct shminfo info; struct shmid_ds ds; } info;
-    int index, max, ret, bad = 0;
+    int index, max, ret, bad = 0, einval = 0;
 
 #if !defined(__UCLIBC__) || defined(__ARCH_USE_MMU__)
     void *addr = shmat(id, NULL, 0);
@@ -148,7 +173,8 @@ static int check_shm(int id)
     }
     for (index = 0; index <= max; index++) {
         memset(&got, 0, sizeof got);
-        ret = shmctl(index, SHM_STAT, &got);
+        ret = shmctl(index, cmd, &got);
+        einval += ret == -1 && errno == EINVAL;
         if (ret != id)
             continue;
         CHECK_PERM(shm_perm);
@@ -161,7 +187,11 @@ static int check_shm(int id)
         CHECK_FIELD(shm_ctime);
         return bad;
     }
-    printf("SHM_STAT did not find shared memory id %d\n", id);
+    if (einval == max + 1 && cmd == SHM_STAT_ANY) {
+        too_old = 1;
+        return 0;
+    }
+    printf("%s did not find shared memory id %d\n", name, id);
     return 1;
 }
 
@@ -179,9 +209,14 @@ int main(void)
         bad = 1;
         goto out;
     }
-    bad |= check_sem(semid);
-    bad |= check_msg(msqid);
-    bad |= check_shm(shmid);
+    bad |= check_sem(semid, SEM_STAT, "SEM_STAT");
+    bad |= check_msg(msqid, MSG_STAT, "MSG_STAT");
+    bad |= check_shm(shmid, SHM_STAT, "SHM_STAT");
+    bad |= check_sem(semid, SEM_STAT_ANY, "SEM_STAT_ANY");
+    bad |= check_msg(msqid, MSG_STAT_ANY, "MSG_STAT_ANY");
+    bad |= check_shm(shmid, SHM_STAT_ANY, "SHM_STAT_ANY");
+    if (too_old)
+        puts("kernel without *_STAT_ANY (before 4.17), not compared");
 out:
     if (semid != -1 && semctl(semid, 0, IPC_RMID) == -1) {
         perror("semctl IPC_RMID");

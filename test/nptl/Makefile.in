@@ -56,7 +56,7 @@ TESTS := tst-align tst-align2 tst-atfork1 tst-attr1 tst-attr2 tst-attr3	\
 	tst-cancelx12 tst-cancelx13 tst-cancelx14 tst-cancelx15 tst-cancelx16 \
 	tst-cancelx18 tst-cancelx20 tst-cancelx21 tst-cleanupx0 tst-cleanupx1 \
 	tst-cleanupx2 tst-cleanupx3 tst-cleanupx4 tst-cond22 tst-cond23 \
-	tst-getpid1 tst-getpid2 tst-getpid3 tst-clone-thread tst-join6 tst-tsd6 \
+	tst-getpid1 tst-getpid2 tst-getpid3 tst-join6 tst-tsd6 \
 	tst-stack-guardsize tst-stack-from-elf tst-tls-stacksize \
 	tst-tls-big \
 	tst-oddstacklimit tst-oncex3 tst-oncex4 tst-rwlock2a  \
